@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>運動会リアルタイムUI</title>
+  <script src="https://cdn.socket.io/4.7.5/socket.io.min.js"></script>
+  <style>
+    body {
+      font-family: sans-serif;
+      background: #0b1020;
+      color: white;
+      padding: 20px;
+    }
+    input, button {
+      padding: 10px;
+      margin: 5px 0;
+    }
+    .card {
+      border: 1px solid #444;
+      border-radius: 12px;
+      padding: 16px;
+      margin-bottom: 16px;
+      background: #111827;
+    }
+  </style>
+</head>
+<body>
+  <h1>運動会リアルタイムUI</h1>
+
+  <div class="card">
+    <div>ルームID: <input id="roomId" value="default"></div>
+    <button id="connectBtn">接続</button>
+  </div>
+
+  <div class="card">
+    <h2>基本設定</h2>
+    <input id="title" placeholder="タイトル">
+    <input id="teamA" placeholder="チームA名">
+    <input id="teamB" placeholder="チームB名">
+    <input id="editor" placeholder="編集者名">
+    <button id="saveMetaBtn">保存</button>
+  </div>
+
+  <div class="card">
+    <h2>現在の状態</h2>
+    <pre id="stateBox"></pre>
+  </div>
+
+  <script>
+    let socket = null;
+    let currentRoom = "default";
+
+    function renderState(state) {
+      document.getElementById("stateBox").textContent =
+        JSON.stringify(state, null, 2);
+    }
+
+    document.getElementById("connectBtn").addEventListener("click", async () => {
+      currentRoom = document.getElementById("roomId").value.trim() || "default";
+
+      if (socket) socket.disconnect();
+
+      socket = io("/", {
+        auth: { room_id: currentRoom }
+      });
+
+      socket.on("state:init", (state) => {
+        renderState(state);
+        document.getElementById("title").value = state.meta.title || "";
+        document.getElementById("teamA").value = state.meta.teamAName || "";
+        document.getElementById("teamB").value = state.meta.teamBName || "";
+      });
+
+      socket.on("state:update", (state) => {
+        renderState(state);
+        document.getElementById("title").value = state.meta.title || "";
+        document.getElementById("teamA").value = state.meta.teamAName || "";
+        document.getElementById("teamB").value = state.meta.teamBName || "";
+      });
+
+      const res = await fetch(`/api/state/${currentRoom}`);
+      const state = await res.json();
+      renderState(state);
+    });
+
+    document.getElementById("saveMetaBtn").addEventListener("click", async () => {
+      const payload = {
+        room_id: currentRoom,
+        title: document.getElementById("title").value,
+        teamAName: document.getElementById("teamA").value,
+        teamBName: document.getElementById("teamB").value,
+        editor: document.getElementById("editor").value || "unknown"
+      };
+
+      await fetch("/api/meta", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload)
+      });
+    });
+  </script>
+</body>
+</html>

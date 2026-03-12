@@ -1,0 +1,200 @@
+import os
+import json
+import asyncpg
+from dotenv import load_dotenv
+
+load_dotenv()
+
+
+class Database:
+    def __init__(self):
+        self.pool: asyncpg.Pool | None = None
+        self.db_url = os.getenv("DATABASE_URL")
+
+        if not self.db_url:
+            raise ValueError("DATABASE_URL が設定されていません")
+
+    async def connect(self):
+        self.pool = await asyncpg.create_pool(self.db_url)
+
+    async def close(self):
+        if self.pool:
+            await self.pool.close()
+
+    async def init_db(self):
+        async with self.pool.acquire() as conn:
+            await conn.execute("""
+                CREATE TABLE IF NOT EXISTS scoreboard_meta (
+                    room_id TEXT PRIMARY KEY,
+                    title TEXT NOT NULL DEFAULT '運動会ポイントボード',
+                    team_a_name TEXT NOT NULL DEFAULT 'チームA',
+                    team_b_name TEXT NOT NULL DEFAULT 'チームB',
+                    updated_at TIMESTAMP DEFAULT NOW()
+                )
+            """)
+
+            await conn.execute("""
+                CREATE TABLE IF NOT EXISTS scoreboard_events (
+                    room_id TEXT NOT NULL,
+                    event_id TEXT NOT NULL,
+                    payload JSONB NOT NULL DEFAULT '{}'::jsonb,
+                    locked BOOLEAN NOT NULL DEFAULT FALSE,
+                    updated_at TIMESTAMP DEFAULT NOW(),
+                    PRIMARY KEY (room_id, event_id)
+                )
+            """)
+
+            await conn.execute("""
+                CREATE TABLE IF NOT EXISTS scoreboard_logs (
+                    id BIGSERIAL PRIMARY KEY,
+                    room_id TEXT NOT NULL,
+                    event_id TEXT,
+                    editor TEXT,
+                    action TEXT NOT NULL,
+                    before_data JSONB,
+                    after_data JSONB,
+                    created_at TIMESTAMP DEFAULT NOW()
+                )
+            """)
+
+    async def load_room_state(self, room_id: str) -> dict:
+        async with self.pool.acquire() as conn:
+            meta_row = await conn.fetchrow("""
+                SELECT title, team_a_name, team_b_name
+                FROM scoreboard_meta
+                WHERE room_id = $1
+            """, room_id)
+
+            if not meta_row:
+                await conn.execute("""
+                    INSERT INTO scoreboard_meta (room_id)
+                    VALUES ($1)
+                    ON CONFLICT (room_id) DO NOTHING
+                """, room_id)
+
+                meta = {
+                    "title": "運動会ポイントボード",
+                    "teamAName": "チームA",
+                    "teamBName": "チームB",
+                }
+            else:
+                meta = {
+                    "title": meta_row["title"],
+                    "teamAName": meta_row["team_a_name"],
+                    "teamBName": meta_row["team_b_name"],
+                }
+
+            rows = await conn.fetch("""
+                SELECT event_id, payload, locked
+                FROM scoreboard_events
+                WHERE room_id = $1
+            """, room_id)
+
+            events = {}
+            locks = {}
+            for row in rows:
+                events[row["event_id"]] = row["payload"] or {}
+                locks[row["event_id"]] = row["locked"]
+
+            return {
+                "meta": meta,
+                "events": events,
+                "locks": locks,
+            }
+
+    async def save_meta(self, room_id: str, meta: dict, editor: str | None = None):
+        async with self.pool.acquire() as conn:
+            before_row = await conn.fetchrow("""
+                SELECT title, team_a_name, team_b_name
+                FROM scoreboard_meta
+                WHERE room_id = $1
+            """, room_id)
+
+            before_data = None
+            if before_row:
+                before_data = dict(before_row)
+
+            await conn.execute("""
+                INSERT INTO scoreboard_meta (room_id, title, team_a_name, team_b_name, updated_at)
+                VALUES ($1, $2, $3, $4, NOW())
+                ON CONFLICT (room_id)
+                DO UPDATE SET
+                    title = EXCLUDED.title,
+                    team_a_name = EXCLUDED.team_a_name,
+                    team_b_name = EXCLUDED.team_b_name,
+                    updated_at = NOW()
+            """, room_id, meta["title"], meta["teamAName"], meta["teamBName"])
+
+            await conn.execute("""
+                INSERT INTO scoreboard_logs (room_id, editor, action, before_data, after_data)
+                VALUES ($1, $2, 'update_meta', $3::jsonb, $4::jsonb)
+            """, room_id, editor, json.dumps(before_data), json.dumps(meta))
+
+    async def save_event(self, room_id: str, event_id: str, payload: dict, editor: str | None = None):
+        async with self.pool.acquire() as conn:
+            before_row = await conn.fetchrow("""
+                SELECT payload
+                FROM scoreboard_events
+                WHERE room_id = $1 AND event_id = $2
+            """, room_id, event_id)
+
+            before_data = before_row["payload"] if before_row else None
+
+            await conn.execute("""
+                INSERT INTO scoreboard_events (room_id, event_id, payload, updated_at)
+                VALUES ($1, $2, $3::jsonb, NOW())
+                ON CONFLICT (room_id, event_id)
+                DO UPDATE SET
+                    payload = EXCLUDED.payload,
+                    updated_at = NOW()
+            """, room_id, event_id, json.dumps(payload))
+
+            await conn.execute("""
+                INSERT INTO scoreboard_logs (room_id, event_id, editor, action, before_data, after_data)
+                VALUES ($1, $2, $3, 'update_event', $4::jsonb, $5::jsonb)
+            """, room_id, event_id, editor, json.dumps(before_data), json.dumps(payload))
+
+    async def set_event_lock(self, room_id: str, event_id: str, locked: bool, editor: str | None = None):
+        async with self.pool.acquire() as conn:
+            await conn.execute("""
+                INSERT INTO scoreboard_events (room_id, event_id, payload, locked, updated_at)
+                VALUES ($1, $2, '{}'::jsonb, $3, NOW())
+                ON CONFLICT (room_id, event_id)
+                DO UPDATE SET
+                    locked = EXCLUDED.locked,
+                    updated_at = NOW()
+            """, room_id, event_id, locked)
+
+            await conn.execute("""
+                INSERT INTO scoreboard_logs (room_id, event_id, editor, action, after_data)
+                VALUES ($1, $2, $3, 'lock_event', $4::jsonb)
+            """, room_id, event_id, editor, json.dumps({"locked": locked}))
+
+    async def reset_room(self, room_id: str, editor: str | None = None):
+        async with self.pool.acquire() as conn:
+            await conn.execute("DELETE FROM scoreboard_events WHERE room_id = $1", room_id)
+            await conn.execute("""
+                UPDATE scoreboard_meta
+                SET title = '運動会ポイントボード',
+                    team_a_name = 'チームA',
+                    team_b_name = 'チームB',
+                    updated_at = NOW()
+                WHERE room_id = $1
+            """, room_id)
+
+            await conn.execute("""
+                INSERT INTO scoreboard_logs (room_id, editor, action)
+                VALUES ($1, $2, 'reset_room')
+            """, room_id, editor)
+
+    async def load_logs(self, room_id: str, limit: int = 50) -> list[dict]:
+        async with self.pool.acquire() as conn:
+            rows = await conn.fetch("""
+                SELECT id, event_id, editor, action, created_at
+                FROM scoreboard_logs
+                WHERE room_id = $1
+                ORDER BY created_at DESC
+                LIMIT $2
+            """, room_id, limit)
+
+            return [dict(r) for r in rows]
