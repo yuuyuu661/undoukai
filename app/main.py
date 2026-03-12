@@ -3,6 +3,11 @@ from fastapi.staticfiles import StaticFiles
 import socketio
 import uvicorn
 from app.db import Database
+from fastapi.responses import FileResponse
+
+@app.get("/")
+async def root():
+    return FileResponse("app/static/index.html")
 
 db = Database()
 
@@ -128,5 +133,6 @@ async def disconnect(sid):
 # ===============================
 if __name__ == "__main__":
     uvicorn.run(socket_app, host="0.0.0.0", port=8000)
+
 
 
