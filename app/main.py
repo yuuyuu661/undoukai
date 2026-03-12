@@ -1,14 +1,13 @@
 from fastapi import FastAPI
 from fastapi.staticfiles import StaticFiles
+from fastapi.responses import FileResponse
 import socketio
 import uvicorn
 from app.db import Database
-from fastapi.responses import FileResponse
 
-@app.get("/")
-async def root():
-    return FileResponse("app/static/index.html")
-
+# ===============================
+# 初期化（順番超重要）
+# ===============================
 db = Database()
 
 sio = socketio.AsyncServer(cors_allowed_origins="*", async_mode="asgi")
@@ -17,6 +16,14 @@ app = FastAPI()
 app.mount("/static", StaticFiles(directory="app/static"), name="static")
 
 socket_app = socketio.ASGIApp(sio, other_asgi_app=app)
+
+
+# ===============================
+# ルート
+# ===============================
+@app.get("/")
+async def root():
+    return FileResponse("app/static/index.html")
 
 
 # ===============================
@@ -118,7 +125,6 @@ async def join(sid, room):
     sio.enter_room(sid, room)
     print("join", room)
 
-    # join時に初期状態送信
     state = await db.load_room_state(room)
     await sio.emit("state:init", state, to=sid)
 
@@ -133,6 +139,3 @@ async def disconnect(sid):
 # ===============================
 if __name__ == "__main__":
     uvicorn.run(socket_app, host="0.0.0.0", port=8000)
-
-
-
