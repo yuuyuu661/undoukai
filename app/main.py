@@ -9,7 +9,7 @@ db = Database()
 sio = socketio.AsyncServer(cors_allowed_origins="*", async_mode="asgi")
 app = FastAPI()
 
-app.mount("/static", StaticFiles(directory="static"), name="static")
+app.mount("/static", StaticFiles(directory="app/static"), name="static")
 
 socket_app = socketio.ASGIApp(sio, other_asgi_app=app)
 
@@ -128,4 +128,5 @@ async def disconnect(sid):
 # ===============================
 if __name__ == "__main__":
     uvicorn.run(socket_app, host="0.0.0.0", port=8000)
+
 
