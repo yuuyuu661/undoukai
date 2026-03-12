@@ -1617,24 +1617,23 @@
 
     async function saveMeta() {
       const payload = {
-        room_id: currentRoomId,
         title: document.getElementById("eventTitle").value.trim() || "運動会ポイントボード",
         teamAName: document.getElementById("teamAName").value.trim() || "チームA",
         teamBName: document.getElementById("teamBName").value.trim() || "チームB",
         editor: getEditorName()
       };
-      const result = await postJson("/api/meta", payload);
+
+      const result = await postJson(`/api/meta/${currentRoomId}`, payload);
       if (!result.ok) alert("設定保存に失敗しました");
     }
 
     async function saveEvent(eventId) {
       const payload = {
-        room_id: currentRoomId,
-        event_id: eventId,
-        payload: deepClone(getEventData(eventId)),
+        ...deepClone(getEventData(eventId)),
         editor: getEditorName()
       };
-      const result = await postJson("/api/event", payload);
+
+      const result = await postJson(`/api/event/${currentRoomId}/${eventId}`, payload);
       if (result.ok === false && result.error === "locked") {
         alert("この競技はロックされています");
       }
@@ -1644,9 +1643,8 @@
       const next = !state.locks[eventId];
       const ok = confirm(next ? "この競技を確定ロックしますか？" : "この競技のロックを解除しますか？");
       if (!ok) return;
-      await postJson("/api/event/lock", {
-        room_id: currentRoomId,
-        event_id: eventId,
+
+      await postJson(`/api/lock/${currentRoomId}/${eventId}`, {
         locked: next,
         editor: getEditorName()
       });
@@ -1655,10 +1653,11 @@
     async function resetRoom() {
       const ok = confirm("このルームの競技入力をすべて初期化します。よろしいですか？");
       if (!ok) return;
-      await postJson("/api/reset", {
-        room_id: currentRoomId,
+
+      await postJson(`/api/reset/${currentRoomId}`, {
         editor: getEditorName()
       });
+
       await fetchLogs();
     }
 
@@ -1752,3 +1751,4 @@
   </script>
 </body>
 </html>
+
