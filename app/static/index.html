@@ -3,101 +3,1751 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>運動会リアルタイムUI</title>
+  <title>運動会ポイント記録サイト</title>
   <script src="https://cdn.socket.io/4.7.5/socket.io.min.js"></script>
   <style>
+    :root {
+      --bg: #0b1020;
+      --panel: rgba(17, 24, 39, 0.92);
+      --panel-2: rgba(30, 41, 59, 0.88);
+      --line: rgba(148, 163, 184, 0.18);
+      --text: #e5eefc;
+      --muted: #9fb0cb;
+      --accent: #7c3aed;
+      --accent-2: #22c55e;
+      --danger: #ef4444;
+      --team-a: #60a5fa;
+      --team-b: #f472b6;
+      --warn: #f59e0b;
+      --ok: #10b981;
+      --shadow: 0 18px 50px rgba(0, 0, 0, 0.35);
+      --radius: 22px;
+    }
+
+    * { box-sizing: border-box; }
+
     body {
-      font-family: sans-serif;
-      background: #0b1020;
-      color: white;
+      margin: 0;
+      font-family: "Segoe UI", "Hiragino Sans", "Yu Gothic UI", sans-serif;
+      color: var(--text);
+      background:
+        radial-gradient(circle at top left, rgba(124, 58, 237, 0.28), transparent 30%),
+        radial-gradient(circle at top right, rgba(34, 197, 94, 0.18), transparent 25%),
+        linear-gradient(180deg, #08101f 0%, #0b1020 100%);
+      min-height: 100vh;
+    }
+
+    .container {
+      max-width: 1450px;
+      margin: 0 auto;
+      padding: 28px 18px 80px;
+    }
+
+    .hero {
+      background: linear-gradient(135deg, rgba(124, 58, 237, 0.22), rgba(15, 23, 42, 0.92));
+      border: 1px solid var(--line);
+      border-radius: 30px;
+      padding: 28px;
+      box-shadow: var(--shadow);
+      backdrop-filter: blur(12px);
+      margin-bottom: 22px;
+    }
+
+    .hero h1 {
+      margin: 0 0 10px;
+      font-size: clamp(28px, 5vw, 44px);
+      line-height: 1.1;
+    }
+
+    .hero p {
+      margin: 0;
+      color: var(--muted);
+      font-size: 15px;
+      line-height: 1.7;
+    }
+
+    .top-tools {
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: 18px;
+      margin-top: 22px;
+    }
+
+    .panel {
+      background: var(--panel);
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+      padding: 18px;
+      backdrop-filter: blur(10px);
+    }
+
+    .panel h2,
+    .panel h3,
+    .panel h4 {
+      margin: 0 0 14px;
+    }
+
+    .settings-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+      gap: 12px;
+      align-items: end;
+    }
+
+    .toolbar-grid {
+      display: grid;
+      grid-template-columns: 2fr 1fr;
+      gap: 18px;
+    }
+
+    @media (max-width: 960px) {
+      .toolbar-grid { grid-template-columns: 1fr; }
+    }
+
+    label {
+      display: block;
+      font-size: 13px;
+      color: var(--muted);
+      margin-bottom: 6px;
+    }
+
+    input,
+    textarea,
+    select,
+    button {
+      width: 100%;
+      border: 1px solid rgba(148, 163, 184, 0.18);
+      background: rgba(15, 23, 42, 0.9);
+      color: var(--text);
+      border-radius: 14px;
+      padding: 11px 13px;
+      font-size: 14px;
+    }
+
+    textarea {
+      min-height: 92px;
+      resize: vertical;
+      line-height: 1.6;
+    }
+
+    input:focus,
+    textarea:focus,
+    select:focus {
+      outline: 2px solid rgba(124, 58, 237, 0.55);
+      border-color: transparent;
+    }
+
+    .btn-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      margin-top: 12px;
+    }
+
+    button {
+      cursor: pointer;
+      transition: 0.18s ease;
+      font-weight: 700;
+    }
+
+    button:hover {
+      transform: translateY(-1px);
+      filter: brightness(1.08);
+    }
+
+    .btn-primary {
+      background: linear-gradient(135deg, var(--accent), #5b21b6);
+      border: none;
+    }
+
+    .btn-secondary {
+      background: linear-gradient(135deg, #1d4ed8, #2563eb);
+      border: none;
+    }
+
+    .btn-success {
+      background: linear-gradient(135deg, #16a34a, #22c55e);
+      border: none;
+    }
+
+    .btn-danger {
+      background: linear-gradient(135deg, #dc2626, #ef4444);
+      border: none;
+    }
+
+    .btn-warning {
+      background: linear-gradient(135deg, #b45309, #f59e0b);
+      border: none;
+      color: #fff;
+    }
+
+    .btn-ghost {
+      background: rgba(30, 41, 59, 0.88);
+    }
+
+    .totals {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+      gap: 16px;
+      margin: 22px 0;
+    }
+
+    .total-card {
+      border-radius: 28px;
+      padding: 22px;
+      box-shadow: var(--shadow);
+      position: relative;
+      overflow: hidden;
+    }
+
+    .total-card::after {
+      content: "";
+      position: absolute;
+      inset: auto -30px -30px auto;
+      width: 120px;
+      height: 120px;
+      border-radius: 50%;
+      background: rgba(255,255,255,0.08);
+    }
+
+    .total-card.team-a { background: linear-gradient(135deg, rgba(37,99,235,0.95), rgba(30,64,175,0.9)); }
+    .total-card.team-b { background: linear-gradient(135deg, rgba(236,72,153,0.95), rgba(190,24,93,0.9)); }
+    .total-card.summary { background: linear-gradient(135deg, rgba(15,23,42,0.96), rgba(51,65,85,0.92)); }
+
+    .total-card h2 {
+      margin: 0 0 8px;
+      font-size: 18px;
+    }
+
+    .score-big {
+      font-size: clamp(34px, 6vw, 54px);
+      font-weight: 800;
+      line-height: 1;
+      margin-bottom: 8px;
+    }
+
+    .summary-line {
+      color: rgba(255,255,255,0.84);
+      font-size: 14px;
+    }
+
+    .days {
+      display: grid;
+      gap: 22px;
+    }
+
+    .day-card {
+      background: rgba(9, 14, 28, 0.9);
+      border: 1px solid var(--line);
+      border-radius: 28px;
       padding: 20px;
+      box-shadow: var(--shadow);
     }
-    input, button {
-      padding: 10px;
-      margin: 5px 0;
-    }
-    .card {
-      border: 1px solid #444;
-      border-radius: 12px;
-      padding: 16px;
+
+    .day-header {
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: space-between;
+      gap: 12px;
+      align-items: center;
       margin-bottom: 16px;
-      background: #111827;
+    }
+
+    .day-title {
+      font-size: 28px;
+      font-weight: 800;
+      margin: 0;
+    }
+
+    .stage-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+      gap: 18px;
+    }
+
+    .stage-card {
+      background: var(--panel-2);
+      border: 1px solid var(--line);
+      border-radius: 24px;
+      padding: 16px;
+    }
+
+    .stage-card h3 {
+      font-size: 22px;
+      margin-bottom: 12px;
+    }
+
+    .event-card {
+      background: rgba(15, 23, 42, 0.9);
+      border: 1px solid rgba(148, 163, 184, 0.14);
+      border-radius: 20px;
+      padding: 16px;
+      margin-bottom: 14px;
+      transition: 0.2s ease;
+    }
+
+    .event-card.locked {
+      outline: 2px solid rgba(16, 185, 129, 0.7);
+    }
+
+    .event-card.pending {
+      box-shadow: inset 0 0 0 1px rgba(245, 158, 11, 0.45);
+    }
+
+    .event-header {
+      display: flex;
+      justify-content: space-between;
+      gap: 12px;
+      align-items: start;
+      margin-bottom: 8px;
+    }
+
+    .event-title {
+      margin: 0;
+      font-size: 18px;
+      font-weight: 800;
+    }
+
+    .time-badge {
+      font-size: 12px;
+      color: #dbeafe;
+      background: rgba(59, 130, 246, 0.24);
+      border: 1px solid rgba(96, 165, 250, 0.25);
+      padding: 6px 10px;
+      border-radius: 999px;
+      white-space: nowrap;
+    }
+
+    .event-desc {
+      color: var(--muted);
+      font-size: 13px;
+      line-height: 1.7;
+      margin-bottom: 14px;
+    }
+
+    .rows {
+      display: grid;
+      gap: 8px;
+      margin-bottom: 12px;
+    }
+
+    .score-row {
+      display: grid;
+      grid-template-columns: 100px 1fr 30px 1fr;
+      gap: 8px;
+      align-items: center;
+    }
+
+    .score-row .round-name {
+      font-size: 13px;
+      color: var(--muted);
+      font-weight: 700;
+    }
+
+    .score-row span.center-dash {
+      text-align: center;
+      color: var(--muted);
+      font-weight: 700;
+    }
+
+    .event-result {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 10px;
+      margin-bottom: 12px;
+    }
+
+    .result-box {
+      border-radius: 16px;
+      padding: 12px;
+      font-weight: 700;
+      min-height: 64px;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      gap: 4px;
+    }
+
+    .result-box small {
+      font-weight: 500;
+      opacity: 0.86;
+    }
+
+    .result-box.team-a { background: rgba(96, 165, 250, 0.12); border: 1px solid rgba(96, 165, 250, 0.2); }
+    .result-box.team-b { background: rgba(244, 114, 182, 0.12); border: 1px solid rgba(244, 114, 182, 0.2); }
+
+    .event-footer {
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: 10px;
+    }
+
+    .mvp-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+    }
+
+    .mini-note {
+      font-size: 12px;
+      color: var(--muted);
+      margin-top: 6px;
+    }
+
+    .notes {
+      color: var(--muted);
+      line-height: 1.8;
+      font-size: 14px;
+      white-space: pre-wrap;
+    }
+
+    .winner-banner {
+      margin-top: 14px;
+      border-radius: 18px;
+      padding: 14px;
+      background: rgba(124, 58, 237, 0.16);
+      border: 1px solid rgba(124, 58, 237, 0.25);
+      font-weight: 700;
+    }
+
+    .sticky-tools {
+      position: sticky;
+      top: 12px;
+      z-index: 10;
+    }
+
+    .hidden { display: none; }
+
+    .status-chip,
+    .lock-chip,
+    .day-sum-chip,
+    .room-chip {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 6px 10px;
+      border-radius: 999px;
+      font-size: 12px;
+      border: 1px solid rgba(148, 163, 184, 0.18);
+      background: rgba(15, 23, 42, 0.9);
+      color: var(--text);
+    }
+
+    .status-chip.ok { background: rgba(16, 185, 129, 0.15); border-color: rgba(16, 185, 129, 0.45); }
+    .status-chip.warn { background: rgba(245, 158, 11, 0.15); border-color: rgba(245, 158, 11, 0.45); }
+    .status-chip.off { background: rgba(148, 163, 184, 0.12); border-color: rgba(148, 163, 184, 0.22); }
+    .lock-chip.on { background: rgba(16, 185, 129, 0.16); border-color: rgba(16, 185, 129, 0.45); }
+    .lock-chip.off { background: rgba(245, 158, 11, 0.14); border-color: rgba(245, 158, 11, 0.35); }
+
+    .event-toolbar {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      align-items: center;
+      margin-bottom: 12px;
+    }
+
+    .day-summary {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+      gap: 10px;
+      margin-bottom: 16px;
+    }
+
+    .day-summary-card {
+      padding: 12px;
+      border-radius: 18px;
+      background: rgba(15, 23, 42, 0.8);
+      border: 1px solid rgba(148, 163, 184, 0.12);
+    }
+
+    .day-summary-card strong {
+      display: block;
+      font-size: 20px;
+      margin-top: 4px;
+    }
+
+    .fold-btn {
+      width: auto;
+      padding: 8px 12px;
+      font-size: 12px;
+    }
+
+    .log-list {
+      display: grid;
+      gap: 8px;
+      max-height: 320px;
+      overflow: auto;
+      padding-right: 6px;
+    }
+
+    .log-item {
+      padding: 10px 12px;
+      border-radius: 14px;
+      background: rgba(15, 23, 42, 0.76);
+      border: 1px solid rgba(148, 163, 184, 0.12);
+      font-size: 13px;
+      line-height: 1.6;
+    }
+
+    .hint {
+      color: var(--muted);
+      font-size: 12px;
+    }
+
+    code.inline {
+      background: rgba(15, 23, 42, 0.9);
+      padding: 2px 6px;
+      border-radius: 8px;
+      border: 1px solid rgba(148, 163, 184, 0.12);
+      font-size: 12px;
+    }
+
+    @media (max-width: 720px) {
+      .score-row { grid-template-columns: 1fr 1fr; }
+      .score-row .round-name { grid-column: 1 / -1; }
+      .score-row span.center-dash { display: none; }
+      .event-result,
+      .mvp-grid { grid-template-columns: 1fr; }
+      .container { padding: 14px 12px 64px; }
+      .hero { padding: 22px 18px; }
     }
   </style>
 </head>
 <body>
-  <h1>運動会リアルタイムUI</h1>
+  <div class="container">
+    <section class="hero">
+      <h1>運動会 ポイント記録サイト</h1>
+      <p>
+        運営用のリアルタイム記録ページです。<br>
+        同じルームに接続している運営全員に、編集内容が即時同期されます。<br>
+        入力は PostgreSQL に保存されるので、再読み込みや再接続でも復元されます。
+      </p>
 
-  <div class="card">
-    <div>ルームID: <input id="roomId" value="default"></div>
-    <button id="connectBtn">接続</button>
-  </div>
+      <div class="top-tools toolbar-grid">
+        <div class="panel sticky-tools">
+          <h2>基本設定</h2>
+          <div class="settings-grid">
+            <div>
+              <label for="roomId">ルームID</label>
+              <input id="roomId" type="text" value="default" />
+              <div class="hint">例: <code class="inline">sports-day-2026</code></div>
+            </div>
+            <div>
+              <label for="editorName">編集者名</label>
+              <input id="editorName" type="text" value="operator" />
+            </div>
+            <div>
+              <label for="eventTitle">イベントタイトル</label>
+              <input id="eventTitle" type="text" value="運動会ポイントボード" />
+            </div>
+            <div>
+              <label for="teamAName">チームA名</label>
+              <input id="teamAName" type="text" value="チームA" />
+            </div>
+            <div>
+              <label for="teamBName">チームB名</label>
+              <input id="teamBName" type="text" value="チームB" />
+            </div>
+          </div>
+          <div class="btn-row">
+            <button class="btn-primary" id="connectBtn">ルーム接続</button>
+            <button class="btn-secondary" id="saveSettingsBtn">設定を保存</button>
+            <button class="btn-success" id="refreshLogsBtn">ログ更新</button>
+            <button class="btn-danger" id="resetBtn">全データ初期化</button>
+          </div>
+          <div class="btn-row">
+            <span class="room-chip" id="roomStatus">未接続</span>
+            <span class="status-chip off" id="socketStatus">Socket: offline</span>
+          </div>
+          <div class="mini-note">観戦向けではなく、運営向けに誤入力防止と即時同期を優先しています。</div>
+        </div>
 
-  <div class="card">
-    <h2>基本設定</h2>
-    <input id="title" placeholder="タイトル">
-    <input id="teamA" placeholder="チームA名">
-    <input id="teamB" placeholder="チームB名">
-    <input id="editor" placeholder="編集者名">
-    <button id="saveMetaBtn">保存</button>
-  </div>
+        <div class="panel">
+          <h2>編集ログ</h2>
+          <div class="log-list" id="logList">
+            <div class="log-item">まだログはありません。</div>
+          </div>
+        </div>
+      </div>
+    </section>
 
-  <div class="card">
-    <h2>現在の状態</h2>
-    <pre id="stateBox"></pre>
+    <section class="totals" id="totalsArea">
+      <article class="total-card team-a">
+        <h2 id="teamATitle">チームA 総合ポイント</h2>
+        <div class="score-big" id="teamATotal">0</div>
+        <div class="summary-line" id="teamAEventCount">獲得イベント数: 0</div>
+      </article>
+      <article class="total-card team-b">
+        <h2 id="teamBTitle">チームB 総合ポイント</h2>
+        <div class="score-big" id="teamBTotal">0</div>
+        <div class="summary-line" id="teamBEventCount">獲得イベント数: 0</div>
+      </article>
+      <article class="total-card summary">
+        <h2>総合結果</h2>
+        <div class="score-big" id="scoreDiff">0 - 0</div>
+        <div class="summary-line" id="winnerText">現在は同点です。</div>
+        <div class="winner-banner" id="winnerBanner">勝敗はまだこれから。逆転劇の匂いがします。</div>
+      </article>
+    </section>
+
+    <main class="days" id="daysRoot"></main>
   </div>
 
   <script>
+    const DEFAULT_ROOM = "default";
+    let currentRoomId = DEFAULT_ROOM;
     let socket = null;
-    let currentRoom = "default";
+    let isSocketReady = false;
 
-    function renderState(state) {
-      document.getElementById("stateBox").textContent =
-        JSON.stringify(state, null, 2);
+    const schema = [
+      {
+        day: "3/27",
+        title: "3/27（金）",
+        stages: [
+          {
+            name: "メインステージ",
+            events: [
+              { type: "note", title: "開会式", time: "21:00", description: "記録対象ではない案内用ブロックです。" },
+              { type: "note", title: "応援合戦", time: "21:10", description: "必要なら後から採点ブロックへ変更できます。" },
+              {
+                type: "roundWinsWithScores",
+                id: "valorant_0327_main",
+                title: "VALORANT",
+                time: "21:40",
+                pointsPerWin: 15,
+                rounds: ["よちよち", "そこそこ", "つよつよ"],
+                description: "13ラウンド先取の通常コンペ同様の試合を、よちよち〜つよつよの計3回戦で実施。勝利ラウンドごとに15ポイント。",
+                mvpCount: 3,
+                details: {
+                  "日時": `3/27 21:40～`,
+                  "場所": `メインステージ`,
+                  "勝利ポイント": `1勝につき15ポイント`,
+                  "チーム結成について": `1チーム5人を下記ランク帯で集め、当フォーラム内のテンプレートを利用し参加申請。ランクは2/22時点での最高ランクを適用。
+よちよち：アンランク～シルバー
+そこそこ：ゴールド～プラチナ
+つよつよ：ダイヤ～`,
+                  "ルール": `13ラウンド先取の通常のコンペ同様の試合を、よちよち～つよつよの計3回戦行います。`,
+                  "MAP": `よちよち：ヘイヴン固定
+そこそこ～つよつよ：現在のMAPローテーションからランダムで1MAP`,
+                  "MVPについて": `1試合ごとに勝利チームから1名、計3名を運営判断で選定。キル数だけでなく、全体的な貢献度や印象的なプレー等も含め総合判断。`,
+                  "禁止行為": `死体撃ちやスプレー等の煽り行為、無駄に勝負を引き延ばすなどリスペクトを欠いた行為、ランクの虚偽申請`
+                }
+              }
+            ]
+          },
+          {
+            name: "サイドステージ",
+            events: [
+              {
+                type: "survivorCount",
+                id: "aburikarubi_0327_side",
+                title: "あぶりカルビゲーム~OasisVer~",
+                time: "21:40",
+                pointsPerUnit: 10,
+                label: "生存人数",
+                description: "最後まで残っていたメンバー1人につき10ポイント。",
+                mvpCount: 1,
+                details: {
+                  "日時": `3/27 21:40～`,
+                  "場所": `サイドステージ`,
+                  "勝利ポイント": `生存メンバー1人につき10ポイント`,
+                  "チーム結成について": `1チーム3人を集め、当フォーラム内のテンプレートを利用し参加申請。`,
+                  "事前準備": `参加者は事前にマイクの感度をエロイプ感度に設定し、ノイズキャンセルをオフにしてください。`,
+                  "当日のゲーム進行とルール": `①参加者全員がサイドステージに上がる
+②順番をルーレットで決定する
+③『おあしすっち失速(しっそく)』と順番に言う
+④2週目は2回、3週目は3回、4週目は4回と段々増やしていく
+⑤噛んでしまったり、言う回数を間違えた人は敗退
+⑥5週終了後、最後まで残っていたメンバー1人につき10ポイント`,
+                  "MVPについて": `MIOの独断と偏見により選出`,
+                  "禁止事項": `明らかにゆっくり発音する行為、他の参加者の発言中に言葉を被せる行為`
+                }
+              },
+              {
+                type: "survivorCount",
+                id: "mozzarella_0327_side",
+                title: "モッツァレラゲーム",
+                time: "22:00",
+                pointsPerUnit: 10,
+                label: "生存人数",
+                description: "生存人数を入力して自動集計。詳細ルールは後から追記可能。",
+                mvpCount: 1,
+                details: {
+                  "日時": `3/27 22:00～`,
+                  "場所": `サイドステージ`,
+                  "勝利ポイント": `生存メンバー1人につき10ポイント`
+                }
+              },
+              {
+                type: "simpleWins",
+                id: "animaltower_0327_side",
+                title: "どうぶつタワーバトル",
+                time: "22:20",
+                pointsPerWin: 5,
+                label: "勝利数",
+                description: "総当たり形式で1人3試合ずつ、計9試合。1勝につき5ポイント。",
+                mvpCount: 3,
+                details: {
+                  "日時": `3/27 22:20～`,
+                  "場所": `サイドステージ`,
+                  "勝利ポイント": `1勝につき5ポイント`,
+                  "チーム結成について": `1チーム3人を集め、当フォーラム内のテンプレートを利用し参加申請。`,
+                  "ルール": `総当たり形式で1人3試合ずつ、計9試合を行います。対戦イメージは添付画像を参考にしてください。`,
+                  "対戦報告について": `対戦終了後、勝利したプレイヤーがスクリーンショットを本フォーラムに投稿してください。`,
+                  "MVPについて": `最も勝利数の多いプレイヤーをMVPとします。勝利数が並んだ場合は複数名をMVPに選定。`,
+                  "禁止行為": `相手を煽ったり、無駄に勝負を引き延ばすなどリスペクトを欠いた行為`
+                }
+              }
+            ]
+          },
+          {
+            name: "サブステージ",
+            events: [
+              {
+                type: "rankPoints",
+                id: "proseka_0327_sub",
+                title: "プロセカ",
+                time: "21:40",
+                description: "2回戦制。各回戦で順位ポイントとAPボーナスを入力して集計する形式です。",
+                rows: ["1回戦順位ポイント", "1回戦APボーナス", "2回戦順位ポイント", "2回戦APボーナス"],
+                mvpCount: 2,
+                details: {
+                  "日時": `3/27 21:40～`,
+                  "場所": `サブステージ`,
+                  "勝利ポイント": `1回戦ごとの順位に応じて 1位10pt / 2位5pt / 3位0pt / 4位0pt、ALL PERFECT達成で追加5pt`,
+                  "チーム結成について": `1チーム2人のチームを2つ作成し、当フォーラム内のテンプレートを利用し参加申請。`,
+                  "ルール": `2回戦制。大会モードを使用。
+【1回戦】アカリA VS おうきA
+【2回戦】アカリB VS おうきB
+各回戦では課題曲3曲をプレイし、3曲の合計スコアで順位を決定。`,
+                  "課題曲": `【1回戦】スイートマジック / ロキ / 劣等上等
+【2回戦】ハッピーシンセサイザ / KING / 千本桜
+すべてMASTER難易度でプレイ。`,
+                  "MVPについて": `各回戦ごとに最も合計得点の高いプレイヤーをMVPとします。（合計2名）`,
+                  "禁止行為": `意図的な切断などゲーム進行を妨害する行為、その他運営が不正と判断する行為`
+                }
+              },
+              {
+                type: "simpleWins",
+                id: "othello_0327_sub",
+                title: "オセロ",
+                time: "22:10",
+                pointsPerWin: 5,
+                label: "勝利数",
+                description: "総当たり計9試合。1勝につき5ポイント。",
+                mvpCount: 3,
+                details: {
+                  "日時": `3/27 22:10～`,
+                  "場所": `サブステージ`,
+                  "勝利ポイント": `1勝につき5ポイント`,
+                  "チーム結成について": `1チーム3人を集め、当フォーラム内のテンプレートを利用し参加申請。`,
+                  "ルール": `アプリはオセロクエストを使用。参加者は事前にインストール。総当たり形式で1人3試合ずつ、計9試合を行います。`,
+                  "対戦報告について": `対戦終了後、勝利したプレイヤーがスクリーンショットを本フォーラムに投稿してください。`,
+                  "MVPについて": `最も勝利数の多いプレイヤーをMVP。勝利数が並んだ場合は複数名を選定。`,
+                  "禁止行為": `相手を煽ったり、無駄に勝負を引き延ばすなどリスペクトを欠いた行為`
+                }
+              }
+            ]
+          }
+        ]
+      },
+      {
+        day: "3/28",
+        title: "3/28（土）",
+        stages: [
+          {
+            name: "メインステージ",
+            events: [
+              {
+                type: "simpleWins",
+                id: "apex_0328_main",
+                title: "APEX",
+                time: "21:00",
+                pointsPerWin: 20,
+                label: "勝利数",
+                description: "デスマッチをよちよち〜つよつよの計2回戦。1勝につき20ポイント。",
+                maxWins: 2,
+                mvpCount: 2,
+                details: {
+                  "日時": `3/28 21:00～`,
+                  "場所": `メインステージ`,
+                  "勝利ポイント": `1勝につき20ポイント`,
+                  "チーム結成について": `1チーム6人を下記ランク帯で集め、当フォーラム内のテンプレートを利用し参加申請。ランクは2/22時点でのS18を除いた最高ランクを適用。
+よちよち：アンランク～プラチナ
+つよつよ：ダイヤ～`,
+                  "ルール": `デスマッチを、よちよち～つよつよの計2回戦行います。`,
+                  "MAP": `キングスキャニオン固定`,
+                  "MVPについて": `1試合ごとに勝利チームから1名、計2名を運営判断で選定。キル数やダメージ数だけでなく、全体的な貢献度や印象的なプレー等も含め総合判断。`,
+                  "禁止行為": `死体撃ち等の煽り行為、無駄に勝負を引き延ばすなどリスペクトを欠いた行為、ランクの虚偽申請`
+                }
+              },
+              {
+                type: "simpleWins",
+                id: "ow2_0328_main",
+                title: "OverWatch2",
+                time: "21:45",
+                pointsPerWin: 15,
+                label: "勝利数",
+                description: "コントロール1試合＋ハイブリッド1試合。1勝につき15ポイント。",
+                maxWins: 2,
+                mvpCount: 2,
+                details: {
+                  "日時": `3/28 21:45～`,
+                  "場所": `メインステージ`,
+                  "勝利ポイント": `1勝につき15ポイント`,
+                  "チーム結成について": `1チーム5人～10人を集め、当フォーラム内のテンプレートを利用し参加申請。`,
+                  "ルール": `コントロールで1試合、ハイブリッドで1試合を行う。1試合ごとにメンバーチェンジ可能。`,
+                  "MAP": `コントロール：Oasis
+ハイブリッド：KING'S ROW`,
+                  "MVPについて": `勝利チームから1名、計2名を運営判断で選定。キル数やダメージ数だけではなく、全体的な貢献度や印象的なプレー等も含め総合判断。`,
+                  "禁止行為": `死体撃ち等の煽り行為、無駄に勝負を引き延ばすなどリスペクトを欠いた行為`
+                }
+              },
+              {
+                type: "simpleWins",
+                id: "lol_0328_main",
+                title: "League of Legends",
+                time: "22:15",
+                pointsPerWin: 20,
+                label: "勝利数",
+                description: "ドラフト方式で1試合。勝利チームに20ポイント。",
+                maxWins: 1,
+                mvpCount: 1,
+                details: {
+                  "日時": `3/28 22:15～`,
+                  "場所": `メインステージ`,
+                  "勝利ポイント": `勝利チームに20ポイント`,
+                  "チーム結成について": `1チーム5人を集め、当フォーラム内のテンプレートを利用し参加申請。`,
+                  "ルール": `ドラフト方式で1試合を行います。`,
+                  "MAP": `サモナーズリフト`,
+                  "MVPについて": `勝利チームから1名を運営判断で選定。キル数やアシスト数だけではなく、全体的な貢献度や印象的なプレー等も含め総合判断。`,
+                  "禁止行為": `エモート等の煽り行為、無駄に勝負を引き延ばすなどリスペクトを欠いた行為`
+                }
+              }
+            ]
+          },
+          {
+            name: "サイドステージ",
+            events: [
+              {
+                type: "simpleWins",
+                id: "splatoon3_0328_side",
+                title: "スプラトゥーン3",
+                time: "21:00",
+                pointsPerWin: 15,
+                label: "勝利数",
+                description: "エリアBO3を2回戦。各回戦の勝利数を入力し、1勝につき15ポイント。",
+                maxWins: 2,
+                mvpCount: 2,
+                details: {
+                  "日時": `3/28 21:00～`,
+                  "場所": `サイドステージ`,
+                  "勝利ポイント": `1勝につき15ポイント`,
+                  "チーム結成について": `1チーム4人を下記ランク帯で計8名集め、当フォーラム内のテンプレートを利用し参加申請。ウデマエは2/22時点での最高ランクを適用。
+よちよち：C- ～ A+
+つよつよ：S ～ X`,
+                  "ルール": `エリアで、よちよち～つよつよの計2回戦。各回戦はBO3(2本先取)で決定。BO3途中でのメンバーチェンジは禁止。`,
+                  "MAP": `ザトウマーケット ⇒ タラポート ⇒ チョウザメ造船`,
+                  "MVPについて": `1回戦ごとに勝利チームから1名、計2名を運営判断で選定。キル数だけでなく、チームへの貢献度や印象的なプレー等も含め総合判断。`,
+                  "禁止行為": `死体撃ち等の煽り行為などリスペクトを欠いた行為、ランクの虚偽申請`
+                }
+              },
+              {
+                type: "simpleWins",
+                id: "unite_0328_side",
+                title: "ポケモンUNITE",
+                time: "21:40",
+                pointsPerWin: 20,
+                label: "勝利数",
+                description: "ドラフト方式で、よちよち〜つよつよの計2回戦。1勝につき20ポイント。",
+                maxWins: 2,
+                mvpCount: 2,
+                details: {
+                  "日時": `3/28 21:40～`,
+                  "場所": `サイドステージ`,
+                  "勝利ポイント": `1勝につき20ポイント`,
+                  "チーム結成について": `1チーム5人を下記ランク帯で集め、当フォーラム内のテンプレートを利用し参加申請。ランクは2/22時点での最高ランクを適用。
+よちよち：ビギナー～エキスパート
+つよつよ：マスター～レジェンド`,
+                  "ルール": `3/28時点でのランクマッチ同様のMAPとルールで試合を行います。ドラフト方式で、よちよち～つよつよの計2回戦を実施。`,
+                  "禁止ポケモン": `メガギャラドス / メガリザードンY（BAN不要、ピック禁止）`,
+                  "MVPについて": `1試合ごとに勝利チームから1名、計2名を運営判断で選定。キル数やアシスト数だけではなく、全体的な貢献度や印象的なプレー等も含め総合判断。`,
+                  "禁止行為": `相手を煽ったり、無駄に勝負を引き延ばすなどリスペクトを欠いた行為、ランクの虚偽申請`
+                }
+              },
+              {
+                type: "simpleWins",
+                id: "unite_volley_0328_side",
+                title: "ポケモンUNITEバレー",
+                time: "22:30",
+                pointsPerWin: 10,
+                label: "勝利数",
+                description: "よちよち1回＋フリー2回の計3回戦。1勝につき10ポイント。",
+                maxWins: 3,
+                mvpCount: 3,
+                details: {
+                  "日時": `3/28 22:30～`,
+                  "場所": `サイドステージ`,
+                  "勝利ポイント": `1勝につき10ポイント`,
+                  "チーム結成について": `1チーム3人を下記ランク帯で3チーム計9人集め、当フォーラム内のテンプレートを利用し参加申請。ランクは2/22時点での最高ランクを適用。
+よちよち(1チーム)：ビギナー～エキスパ
+フリー(2チーム)：ランク制限なし`,
+                  "ルール": `3/28時点でのランクマッチ同様のMAPとルールの試合を、よちよち1回～フリー2回の計3回戦行います。`,
+                  "禁止ポケモン": `カビゴン / カメックス`,
+                  "MVPについて": `1試合ごとに勝利チームから1名、計3名を運営判断で選定。ゴール数やアシスト数だけではなく、全体的な貢献度や印象的なプレー等も含め総合判断。`,
+                  "禁止行為": `禁止ポケモンのピック、相手を煽ったり無駄に勝負を引き延ばすなどリスペクトを欠いた行為、ランクの虚偽申請`
+                }
+              }
+            ]
+          },
+          {
+            name: "サブステージ",
+            events: [
+              {
+                type: "boWinner",
+                id: "knivesout_0328_sub",
+                title: "荒野行動",
+                time: "21:00",
+                pointsForSeriesWinner: 20,
+                description: "団体競技場で5対5のBO5（3本先取）。シリーズ勝者に20ポイント。",
+                bestOf: 5,
+                mvpCount: 1,
+                details: {
+                  "日時": `3/28 21:00～`,
+                  "場所": `サブステージ`,
+                  "勝利ポイント": `勝利チームに20ポイント`,
+                  "チーム結成について": `1チーム5人を集め、当フォーラム内のテンプレートを利用し参加申請。`,
+                  "ルール": `団体競技場で5対5のBO5(3本先取)で対戦を行います。`,
+                  "MAP": `トレイン`,
+                  "MVPについて": `勝利チームから1名を運営判断で選定。キル数だけではなく、全体的な貢献度や印象的なプレー等も含め総合判断。`,
+                  "禁止行為": `死体撃ち等の煽り行為、無駄に勝負を引き延ばすなどリスペクトを欠いた行為`
+                }
+              },
+              {
+                type: "boWinner",
+                id: "brawlstars_0328_sub",
+                title: "ブロスタ",
+                time: "21:45",
+                pointsForSeriesWinner: 20,
+                description: "3vs3のBO3を3モードで実施。最終勝利チームに20ポイント。",
+                bestOf: 3,
+                mvpCount: 1,
+                details: {
+                  "日時": `3/28 21:45～`,
+                  "場所": `サブステージ`,
+                  "勝利ポイント": `勝利チームに20ポイント`,
+                  "チーム結成について": `1チーム3人を集め、当フォーラム内のテンプレートを利用し参加申請。`,
+                  "ルール": `ガチバトル形式で3vs3のBO3(2本先取)を3本行います。
+サッカー / ノックアウト / ホットゾーン`,
+                  "MAP": `サッカー：中央コート
+ノックアウト：オープンフィールド
+ホットゾーン：ビートルバトル`,
+                  "MVPについて": `敗北チームの投票により、一番投票数の多かった勝利チームのメンバーをMVP。 同票の場合は複数名を選定。`,
+                  "禁止行為": `煽り行為、無駄に勝負を引き延ばすなどリスペクトを欠いた行為`
+                }
+              },
+              {
+                type: "boWinner",
+                id: "godfield_0328_sub",
+                title: "ゴッドフィールド",
+                time: "22:15",
+                pointsForSeriesWinner: 20,
+                description: "3:3のBO3（2本先取）。勝利チームに20ポイント。",
+                bestOf: 3,
+                mvpCount: 1,
+                details: {
+                  "日時": `3/28 22:15～`,
+                  "場所": `サブステージ`,
+                  "勝利ポイント": `勝利チームに20ポイント`,
+                  "チーム結成について": `1チーム3人を集め、当フォーラム内のテンプレートを利用し参加申請。`,
+                  "ルール": `3:3の試合をBO3(2本先取)で行います。`,
+                  "対戦報告について": `対戦終了後、勝利したチームの代表者がスクリーンショットを本フォーラムに投稿。スクリーンショットは1試合ごとに投稿。`,
+                  "MVPについて": `試合を通して最も活躍したプレイヤー1名をMVPとします。（勝利チームから選出）`,
+                  "禁止行為": `チャットで相手を煽ったり、無駄に勝負を引き延ばすなどリスペクトを欠いた行為`
+                }
+              }
+            ]
+          }
+        ]
+      },
+      {
+        day: "3/29",
+        title: "3/29（日）",
+        stages: [
+          {
+            name: "メインステージ",
+            events: [
+              {
+                type: "simpleWins",
+                id: "sf6_0329_main",
+                title: "ストリートファイター6",
+                time: "21:00",
+                pointsPerWin: 10,
+                label: "勝利数",
+                description: "よちよち〜夫婦喧嘩の計5回戦。1勝につき10ポイント。",
+                maxWins: 5,
+                mvpCount: 1,
+                details: {
+                  "日時": `3/29 21:00～`,
+                  "場所": `メインステージ`,
+                  "勝利ポイント": `1勝につき10ポイント`,
+                  "チーム結成について": `1チーム4人を下記ランク帯で集め、当フォーラム内のテンプレートを利用し参加申請。夫婦喧嘩枠は参加申請時にしば or えろ子を記載。ランクは2/22時点での最高ランクを適用。
+よちよち：アンランク～シルバー
+そこそこ：ゴールド～プラチナ
+つよつよ：ダイヤ～マスター
+パワフル：マスター～レジェンド
+夫婦喧嘩：しば(プラチナ1 エド) or えろ子(プラチナ1 マリーザ)`,
+                  "ルール": `2ラウンド先取のBO3を、よちよち～夫婦喧嘩の計5回戦行います。キャラは参加申請時に申請した1キャラのみ使用可能。`,
+                  "MVPについて": `試合後にアンケートを実施し、投票数が一番多かったメンバーをMVPに選定します。`,
+                  "禁止行為": `相手を煽ったり、無駄に勝負を引き延ばすなどリスペクトを欠いた行為、ランクの虚偽申請`
+                }
+              },
+              {
+                type: "survivorCount",
+                id: "oasis_quiz_0329_main",
+                title: "Oasisクイズ",
+                time: "22:00",
+                pointsPerUnit: 1,
+                label: "正解者数",
+                description: "20人×5問、最大100ポイント。正解者数を入力して自動集計。",
+                mvpCount: 5,
+                details: {
+                  "日時": `3/29 22:00～`,
+                  "場所": `メインステージ`,
+                  "獲得ポイント": `正解数×1ポイント`,
+                  "チーム結成について": `1チーム20人を集めてください。事前申請は不要です。`,
+                  "ルール": `アプリはどこパを使用。アカリチーム⇒おうきチームの順番に行い、Oasisに関するクイズを5問出題。1問正解ごとに1ポイント。20人×5問なのでMAX100ポイント。`,
+                  "MVPについて": `最も正解数の多いプレイヤーをMVP。正解数が並んだ場合は複数名をMVPに選定。`,
+                  "禁止行為": `正解を他のメンバーにVCやDM等で教える行為（ヒント等も禁止）`
+                }
+              },
+              { type: "note", title: "閉会式", time: "22:45", description: "最終結果の発表に使ってください。" }
+            ]
+          },
+          {
+            name: "サイドステージ",
+            events: [
+              {
+                type: "simpleWins",
+                id: "hayaooshi_0329_side",
+                title: "みんなで早押しクイズ",
+                time: "21:00",
+                pointsPerWin: 5,
+                label: "勝利数",
+                description: "総当たり計9試合。1勝につき5ポイント。",
+                mvpCount: 3,
+                details: {
+                  "日時": `3/29 21:00～`,
+                  "場所": `サイドステージ`,
+                  "勝利ポイント": `1勝につき5ポイント`,
+                  "チーム結成について": `1チーム3人を集め、当フォーラム内のテンプレートを利用し参加申請。`,
+                  "ルール": `アプリは、みんなで早押しクイズを使用。総当たり形式で1人3試合ずつ、計9試合。アカリチームのメンバーがフリーマッチ部屋を建て、指定ルール設定で対戦。`,
+                  "対戦報告について": `対戦終了後、勝利したプレイヤーがスクリーンショットを本フォーラムに投稿してください。`,
+                  "MVPについて": `最も勝利数の多いプレイヤーをMVP。勝利数が並んだ場合は複数名を選定。`,
+                  "禁止行為": `チャットでの煽り行為等、リスペクトを欠いた行為`
+                }
+              },
+              {
+                type: "mahjongManual",
+                id: "mahjong_0329_side",
+                title: "4人麻雀",
+                time: "21:30",
+                description: "複数試合・飛び賞・飛び罰符があるため、合計ポイントを手動入力する方式です。",
+                mvpCount: 1,
+                notes: "1位15 / 2位10 / 3位5 / 4位0 / 飛び賞+20 / 飛び罰符-20",
+                details: {
+                  "日時": `3/29 21:30～`,
+                  "場所": `サイドステージ`,
+                  "チーム結成について": `2人1組でコンビを作り、計2コンビ（4人）を作成。コンビごとに参加申請。`,
+                  "事前準備": `アプリは雀魂を使用。参加者は事前にインストール。`,
+                  "対戦方式": `総当たり形式。各コンビは1コンビにつき2試合行い、合計4試合実施。`,
+                  "ルール": `半荘1回 / 雀魂公式ルール(デフォルトルール) / ルームはアカリチームが作成 / ルームIDをVC内チャットに記載。`,
+                  "ポイントについて": `1位：15ポイント / 2位：10ポイント / 3位：5ポイント / 4位：0ポイント / 飛び賞：20ポイント / 飛び罰符：-20ポイント`,
+                  "特殊ルール": `コンビごとに2人用VCを用意。VC内での相談・コンビ打ちは自由。画面共有は禁止。`,
+                  "MVPについて": `半荘2回戦（2試合）の合計点数が1番高かったプレイヤーをMVPに選定。`,
+                  "禁止行為": `コンビVC内での画面共有`
+                }
+              }
+            ]
+          },
+          {
+            name: "サブステージ",
+            events: [
+              {
+                type: "identityV",
+                id: "identityv_0329_sub",
+                title: "第五人格",
+                time: "21:00",
+                description: "4試合分のサバイバー脱出人数とボーナスを入力して自動集計。",
+                mvpCount: 1,
+                rounds: ["試合1", "試合2", "試合3", "試合4"],
+                details: {
+                  "日時": `3/29 21:00～`,
+                  "場所": `サイドステージ`,
+                  "勝利ポイント": `サバイバー脱出：1人につき5ポイント / 全員脱出ボーナス：10ポイント / 全吊りボーナス（4吊り）：10ポイント`,
+                  "チーム結成について": `ハンター1人、サバイバー4人の合計5人のチームを各チーム2つずつ作成し、当フォーラム内のテンプレートを利用し参加申請。`,
+                  "ルール": `アカリA：ハンター / おうきA：サバイバー
+おうきA：ハンター / アカリA：サバイバー
+アカリB：ハンター / おうきB：サバイバー
+おうきB：ハンター / アカリB：サバイバー
+上記の組み合わせで計4試合。同時進行あり。`,
+                  "MAP": `各試合、ハンター側がMAPを指定。同一MAPの連続指定も可能。初期スポーン（沸き位置）は選択式。`,
+                  "MVPについて": `試合全体を通して、最も活躍したプレイヤー1名を運営判断によりMVPとして選定。`,
+                  "禁止行為": `無駄に勝負を引き延ばすなどリスペクトを欠いた行為`
+                }
+              }
+            ]
+          }
+        ]
+      }
+    ];
+
+    const state = {
+      meta: {
+        title: "運動会ポイントボード",
+        teamAName: "チームA",
+        teamBName: "チームB"
+      },
+      events: {},
+      locks: {}
+    };
+
+    function getEditorName() {
+      return document.getElementById("editorName").value.trim() || "operator";
     }
 
-    document.getElementById("connectBtn").addEventListener("click", async () => {
-      currentRoom = document.getElementById("roomId").value.trim() || "default";
+    function getRoomId() {
+      return document.getElementById("roomId").value.trim() || DEFAULT_ROOM;
+    }
 
-      if (socket) socket.disconnect();
+    function escapeHtml(str = "") {
+      return String(str)
+        .replaceAll("&", "&amp;")
+        .replaceAll("<", "&lt;")
+        .replaceAll(">", "&gt;")
+        .replaceAll('"', "&quot;")
+        .replaceAll("'", "&#039;");
+    }
 
-      socket = io("/", {
-        auth: { room_id: currentRoom }
-      });
+    function safeNum(v) {
+      if (v === "" || v === null || v === undefined) return 0;
+      const n = Number(v);
+      return Number.isFinite(n) ? n : 0;
+    }
 
-      socket.on("state:init", (state) => {
-        renderState(state);
-        document.getElementById("title").value = state.meta.title || "";
-        document.getElementById("teamA").value = state.meta.teamAName || "";
-        document.getElementById("teamB").value = state.meta.teamBName || "";
-      });
+    function deepClone(obj) {
+      return JSON.parse(JSON.stringify(obj));
+    }
 
-      socket.on("state:update", (state) => {
-        renderState(state);
-        document.getElementById("title").value = state.meta.title || "";
-        document.getElementById("teamA").value = state.meta.teamAName || "";
-        document.getElementById("teamB").value = state.meta.teamBName || "";
-      });
-
-      const res = await fetch(`/api/state/${currentRoom}`);
-      const state = await res.json();
-      renderState(state);
-    });
-
-    document.getElementById("saveMetaBtn").addEventListener("click", async () => {
-      const payload = {
-        room_id: currentRoom,
-        title: document.getElementById("title").value,
-        teamAName: document.getElementById("teamA").value,
-        teamBName: document.getElementById("teamB").value,
-        editor: document.getElementById("editor").value || "unknown"
+    function applyServerState(serverState) {
+      state.meta = {
+        title: serverState?.meta?.title || "運動会ポイントボード",
+        teamAName: serverState?.meta?.teamAName || "チームA",
+        teamBName: serverState?.meta?.teamBName || "チームB"
       };
+      state.events = serverState?.events || {};
+      state.locks = serverState?.locks || {};
+      render();
+    }
 
-      await fetch("/api/meta", {
+    function getEventData(id) {
+      if (!state.events[id]) state.events[id] = {};
+      return state.events[id];
+    }
+
+    function eventHasAnyInput(event, data) {
+      if (!event.id) return false;
+      const keys = Object.keys(data || {});
+      return keys.some((key) => {
+        const val = data[key];
+        return val !== "" && val !== null && val !== undefined;
+      });
+    }
+
+    function getEventStatus(event, data) {
+      const locked = !!state.locks[event.id];
+      const hasInput = eventHasAnyInput(event, data);
+      if (locked) return { text: "確定", cls: "ok" };
+      if (hasInput) return { text: "入力中", cls: "warn" };
+      return { text: "未入力", cls: "off" };
+    }
+
+    function calcEventPoints(event, data) {
+      let a = 0;
+      let b = 0;
+      let detailA = "";
+      let detailB = "";
+
+      if (event.type === "roundWinsWithScores") {
+        let winsA = 0, winsB = 0;
+        event.rounds.forEach((_, index) => {
+          const sa = safeNum(data[`a_score_${index}`]);
+          const sb = safeNum(data[`b_score_${index}`]);
+          if (sa > sb) winsA += 1;
+          else if (sb > sa) winsB += 1;
+        });
+        a = winsA * event.pointsPerWin;
+        b = winsB * event.pointsPerWin;
+        detailA = `${winsA}勝 / ${event.pointsPerWin}pt`;
+        detailB = `${winsB}勝 / ${event.pointsPerWin}pt`;
+      }
+
+      if (event.type === "survivorCount") {
+        const countA = safeNum(data.countA);
+        const countB = safeNum(data.countB);
+        a = countA * event.pointsPerUnit;
+        b = countB * event.pointsPerUnit;
+        detailA = `${countA}${event.label || "人"} × ${event.pointsPerUnit}pt`;
+        detailB = `${countB}${event.label || "人"} × ${event.pointsPerUnit}pt`;
+      }
+
+      if (event.type === "simpleWins") {
+        const winsA = safeNum(data.winsA);
+        const winsB = safeNum(data.winsB);
+        a = winsA * event.pointsPerWin;
+        b = winsB * event.pointsPerWin;
+        detailA = `${winsA}${event.label || "勝"} × ${event.pointsPerWin}pt`;
+        detailB = `${winsB}${event.label || "勝"} × ${event.pointsPerWin}pt`;
+      }
+
+      if (event.type === "rankPoints") {
+        event.rows.forEach((_, index) => {
+          a += safeNum(data[`rowA_${index}`]);
+          b += safeNum(data[`rowB_${index}`]);
+        });
+        detailA = `入力合計ポイント`;
+        detailB = `入力合計ポイント`;
+      }
+
+      if (event.type === "boWinner") {
+        const seriesA = Math.min(1, safeNum(data.seriesA));
+        const seriesB = Math.min(1, safeNum(data.seriesB));
+        a = seriesA * event.pointsForSeriesWinner;
+        b = seriesB * event.pointsForSeriesWinner;
+        detailA = `シリーズ勝利 ${seriesA}件`;
+        detailB = `シリーズ勝利 ${seriesB}件`;
+      }
+
+      if (event.type === "mahjongManual") {
+        a = safeNum(data.manualA);
+        b = safeNum(data.manualB);
+        detailA = `手動入力`;
+        detailB = `手動入力`;
+      }
+
+      if (event.type === "identityV") {
+        event.rounds.forEach((_, index) => {
+          a += safeNum(data[`a_escape_${index}`]) * 5;
+          a += safeNum(data[`a_allescape_${index}`]);
+          a += safeNum(data[`a_fullkill_${index}`]);
+
+          b += safeNum(data[`b_escape_${index}`]) * 5;
+          b += safeNum(data[`b_allescape_${index}`]);
+          b += safeNum(data[`b_fullkill_${index}`]);
+        });
+        detailA = `脱出+ボーナス合計`;
+        detailB = `脱出+ボーナス合計`;
+      }
+
+      return { a, b, detailA, detailB };
+    }
+
+    function collectAllEventResults() {
+      const results = [];
+      schema.forEach(day => {
+        day.stages.forEach(stage => {
+          stage.events.forEach(event => {
+            if (!event.id) return;
+            const data = getEventData(event.id);
+            const points = calcEventPoints(event, data);
+            results.push({
+              id: event.id,
+              day: day.day,
+              title: event.title,
+              a: points.a,
+              b: points.b
+            });
+          });
+        });
+      });
+      return results;
+    }
+
+    function getDayResults(dayKey) {
+      return collectAllEventResults().filter(r => r.day === dayKey);
+    }
+
+    function getWinnerText(a, b) {
+      if (a > b) return `${state.meta.teamAName} 勝利`;
+      if (b > a) return `${state.meta.teamBName} 勝利`;
+      return `引き分け`;
+    }
+
+    function renderDetailSections(event) {
+      if (!event.details) return "";
+      return `
+        <details class="panel" style="padding:14px; margin-bottom:12px; background:rgba(2,6,23,0.45); border-radius:18px;">
+          <summary style="cursor:pointer; font-weight:800; margin-bottom:10px;">競技詳細を開く</summary>
+          <div class="notes" style="margin-top:10px;">${Object.entries(event.details).map(([key, value]) => `【${escapeHtml(key)}】\n${escapeHtml(value)}`).join("\n\n")}</div>
+        </details>
+      `;
+    }
+
+    function renderMvpFields(event, data) {
+      return `
+        <div class="event-footer">
+          <div class="mvp-grid">
+            <div>
+              <label>MVP（カンマ区切り）</label>
+              <textarea data-event-id="${event.id}" data-key="mvp" placeholder="例: a,b,c" ${state.locks[event.id] ? "disabled" : ""}>${escapeHtml(data.mvp || "")}</textarea>
+              <div class="mini-note">目安: ${event.mvpCount || 1}名</div>
+            </div>
+            <div>
+              <label>メモ</label>
+              <textarea data-event-id="${event.id}" data-key="memo" placeholder="補足、実況メモ、判定理由など" ${state.locks[event.id] ? "disabled" : ""}>${escapeHtml(data.memo || "")}</textarea>
+            </div>
+          </div>
+        </div>
+      `;
+    }
+
+    function renderEvent(event) {
+      if (event.type === "note") {
+        return `
+          <article class="event-card">
+            <div class="event-header">
+              <h4 class="event-title">${escapeHtml(event.title)}</h4>
+              <span class="time-badge">${escapeHtml(event.time)}</span>
+            </div>
+            <div class="notes">${escapeHtml(event.description || "")}</div>
+          </article>
+        `;
+      }
+
+      const data = getEventData(event.id);
+      const teamAName = state.meta.teamAName;
+      const teamBName = state.meta.teamBName;
+      const result = calcEventPoints(event, data);
+      const locked = !!state.locks[event.id];
+      const status = getEventStatus(event, data);
+      let body = "";
+
+      if (event.type === "roundWinsWithScores") {
+        body = `
+          <div class="rows">
+            ${event.rounds.map((round, index) => `
+              <div class="score-row">
+                <div class="round-name">${escapeHtml(round)}</div>
+                <input type="number" min="0" data-event-id="${event.id}" data-key="a_score_${index}" value="${data[`a_score_${index}`] ?? ""}" placeholder="${teamAName} スコア" ${locked ? "disabled" : ""} />
+                <span class="center-dash">-</span>
+                <input type="number" min="0" data-event-id="${event.id}" data-key="b_score_${index}" value="${data[`b_score_${index}`] ?? ""}" placeholder="${teamBName} スコア" ${locked ? "disabled" : ""} />
+              </div>
+            `).join("")}
+          </div>
+          ${renderMvpFields(event, data)}
+        `;
+      }
+
+      if (event.type === "survivorCount") {
+        body = `
+          <div class="rows">
+            <div class="score-row">
+              <div class="round-name">${escapeHtml(event.label || "人数")}</div>
+              <input type="number" min="0" data-event-id="${event.id}" data-key="countA" value="${data.countA ?? ""}" placeholder="${teamAName}" ${locked ? "disabled" : ""} />
+              <span class="center-dash">-</span>
+              <input type="number" min="0" data-event-id="${event.id}" data-key="countB" value="${data.countB ?? ""}" placeholder="${teamBName}" ${locked ? "disabled" : ""} />
+            </div>
+          </div>
+          ${renderMvpFields(event, data)}
+        `;
+      }
+
+      if (event.type === "simpleWins") {
+        body = `
+          <div class="rows">
+            <div class="score-row">
+              <div class="round-name">${escapeHtml(event.label || "勝利数")}</div>
+              <input type="number" min="0" ${event.maxWins ? `max="${event.maxWins}"` : ""} data-event-id="${event.id}" data-key="winsA" value="${data.winsA ?? ""}" placeholder="${teamAName}" ${locked ? "disabled" : ""} />
+              <span class="center-dash">-</span>
+              <input type="number" min="0" ${event.maxWins ? `max="${event.maxWins}"` : ""} data-event-id="${event.id}" data-key="winsB" value="${data.winsB ?? ""}" placeholder="${teamBName}" ${locked ? "disabled" : ""} />
+            </div>
+          </div>
+          ${renderMvpFields(event, data)}
+        `;
+      }
+
+      if (event.type === "rankPoints") {
+        body = `
+          <div class="rows">
+            ${event.rows.map((row, index) => `
+              <div class="score-row">
+                <div class="round-name">${escapeHtml(row)}</div>
+                <input type="number" min="0" data-event-id="${event.id}" data-key="rowA_${index}" value="${data[`rowA_${index}`] ?? ""}" placeholder="${teamAName} ポイント" ${locked ? "disabled" : ""} />
+                <span class="center-dash">-</span>
+                <input type="number" min="0" data-event-id="${event.id}" data-key="rowB_${index}" value="${data[`rowB_${index}`] ?? ""}" placeholder="${teamBName} ポイント" ${locked ? "disabled" : ""} />
+              </div>
+            `).join("")}
+          </div>
+          ${renderMvpFields(event, data)}
+        `;
+      }
+
+      if (event.type === "boWinner") {
+        body = `
+          <div class="rows">
+            <div class="score-row">
+              <div class="round-name">シリーズ勝利数</div>
+              <input type="number" min="0" max="1" data-event-id="${event.id}" data-key="seriesA" value="${data.seriesA ?? ""}" placeholder="${teamAName}" ${locked ? "disabled" : ""} />
+              <span class="center-dash">-</span>
+              <input type="number" min="0" max="1" data-event-id="${event.id}" data-key="seriesB" value="${data.seriesB ?? ""}" placeholder="${teamBName}" ${locked ? "disabled" : ""} />
+            </div>
+            <div class="score-row">
+              <div class="round-name">試合取得数（メモ）</div>
+              <input type="number" min="0" data-event-id="${event.id}" data-key="gameWinsA" value="${data.gameWinsA ?? ""}" placeholder="${teamAName}" ${locked ? "disabled" : ""} />
+              <span class="center-dash">-</span>
+              <input type="number" min="0" data-event-id="${event.id}" data-key="gameWinsB" value="${data.gameWinsB ?? ""}" placeholder="${teamBName}" ${locked ? "disabled" : ""} />
+            </div>
+          </div>
+          ${renderMvpFields(event, data)}
+        `;
+      }
+
+      if (event.type === "mahjongManual") {
+        body = `
+          <div class="rows">
+            <div class="score-row">
+              <div class="round-name">合計ポイント</div>
+              <input type="number" data-event-id="${event.id}" data-key="manualA" value="${data.manualA ?? ""}" placeholder="${teamAName}" ${locked ? "disabled" : ""} />
+              <span class="center-dash">-</span>
+              <input type="number" data-event-id="${event.id}" data-key="manualB" value="${data.manualB ?? ""}" placeholder="${teamBName}" ${locked ? "disabled" : ""} />
+            </div>
+          </div>
+          <div class="mini-note">${escapeHtml(event.notes || "")}</div>
+          ${renderMvpFields(event, data)}
+        `;
+      }
+
+      if (event.type === "identityV") {
+        body = `
+          <div class="rows">
+            ${event.rounds.map((round, index) => `
+              <div class="panel" style="padding:10px; border-radius:16px; background:rgba(2,6,23,0.45)">
+                <div class="round-name" style="margin-bottom:8px;">${escapeHtml(round)}</div>
+                <div class="score-row" style="margin-bottom:8px;">
+                  <div class="round-name">${teamAName} 脱出人数</div>
+                  <input type="number" min="0" max="4" data-event-id="${event.id}" data-key="a_escape_${index}" value="${data[`a_escape_${index}`] ?? ""}" placeholder="0-4" ${locked ? "disabled" : ""} />
+                  <span class="center-dash">-</span>
+                  <input type="number" min="0" max="4" data-event-id="${event.id}" data-key="b_escape_${index}" value="${data[`b_escape_${index}`] ?? ""}" placeholder="0-4" ${locked ? "disabled" : ""} />
+                </div>
+                <div class="score-row" style="margin-bottom:8px;">
+                  <div class="round-name">全員脱出ボーナス</div>
+                  <input type="number" min="0" max="10" step="10" data-event-id="${event.id}" data-key="a_allescape_${index}" value="${data[`a_allescape_${index}`] ?? ""}" placeholder="0 or 10" ${locked ? "disabled" : ""} />
+                  <span class="center-dash">-</span>
+                  <input type="number" min="0" max="10" step="10" data-event-id="${event.id}" data-key="b_allescape_${index}" value="${data[`b_allescape_${index}`] ?? ""}" placeholder="0 or 10" ${locked ? "disabled" : ""} />
+                </div>
+                <div class="score-row">
+                  <div class="round-name">全吊りボーナス</div>
+                  <input type="number" min="0" max="10" step="10" data-event-id="${event.id}" data-key="a_fullkill_${index}" value="${data[`a_fullkill_${index}`] ?? ""}" placeholder="0 or 10" ${locked ? "disabled" : ""} />
+                  <span class="center-dash">-</span>
+                  <input type="number" min="0" max="10" step="10" data-event-id="${event.id}" data-key="b_fullkill_${index}" value="${data[`b_fullkill_${index}`] ?? ""}" placeholder="0 or 10" ${locked ? "disabled" : ""} />
+                </div>
+              </div>
+            `).join("")}
+          </div>
+          ${renderMvpFields(event, data)}
+        `;
+      }
+
+      return `
+        <article class="event-card ${locked ? "locked" : ""} ${status.cls === "warn" ? "pending" : ""}">
+          <div class="event-header">
+            <h4 class="event-title">${escapeHtml(event.title)}</h4>
+            <span class="time-badge">${escapeHtml(event.time)}</span>
+          </div>
+          <div class="event-toolbar">
+            <span class="status-chip ${status.cls}">状態: ${escapeHtml(status.text)}</span>
+            <span class="lock-chip ${locked ? "on" : "off"}">ロック: ${locked ? "ON" : "OFF"}</span>
+            <span class="status-chip off">判定: ${escapeHtml(getWinnerText(result.a, result.b))}</span>
+            <button class="fold-btn btn-ghost" data-action="save-event" data-event-id="${event.id}">この競技を保存</button>
+            <button class="fold-btn ${locked ? "btn-warning" : "btn-success"}" data-action="toggle-lock" data-event-id="${event.id}">${locked ? "ロック解除" : "確定ロック"}</button>
+          </div>
+          <div class="event-desc">${escapeHtml(event.description || "")}</div>
+          ${renderDetailSections(event)}
+          ${body}
+          <div class="event-result">
+            <div class="result-box team-a">
+              <div>${escapeHtml(teamAName)} +${result.a} ポイント</div>
+              <small>${escapeHtml(result.detailA)}</small>
+            </div>
+            <div class="result-box team-b">
+              <div>${escapeHtml(teamBName)} +${result.b} ポイント</div>
+              <small>${escapeHtml(result.detailB)}</small>
+            </div>
+          </div>
+        </article>
+      `;
+    }
+
+    function renderStage(stage) {
+      return `
+        <section class="stage-card">
+          <h3>${escapeHtml(stage.name)}</h3>
+          ${stage.events.map(renderEvent).join("")}
+        </section>
+      `;
+    }
+
+    function renderDay(dayObj) {
+      const dayResults = getDayResults(dayObj.day);
+      const totalA = dayResults.reduce((sum, r) => sum + r.a, 0);
+      const totalB = dayResults.reduce((sum, r) => sum + r.b, 0);
+      const completed = dayObj.stages.flatMap(s => s.events).filter(e => e.id && state.locks[e.id]).length;
+      const editable = dayObj.stages.flatMap(s => s.events).filter(e => e.id).length;
+
+      return `
+        <section class="day-card">
+          <div class="day-header">
+            <h2 class="day-title">${escapeHtml(dayObj.title)}</h2>
+            <div class="day-sum-chip">確定 ${completed} / ${editable}</div>
+          </div>
+          <div class="day-summary">
+            <div class="day-summary-card">
+              <div class="hint">${escapeHtml(state.meta.teamAName)} 日別合計</div>
+              <strong>${totalA}</strong>
+            </div>
+            <div class="day-summary-card">
+              <div class="hint">${escapeHtml(state.meta.teamBName)} 日別合計</div>
+              <strong>${totalB}</strong>
+            </div>
+            <div class="day-summary-card">
+              <div class="hint">日別勝敗</div>
+              <strong>${escapeHtml(getWinnerText(totalA, totalB))}</strong>
+            </div>
+          </div>
+          <div class="stage-grid">
+            ${dayObj.stages.map(renderStage).join("")}
+          </div>
+        </section>
+      `;
+    }
+
+    function updateTotals() {
+      const results = collectAllEventResults();
+      const totalA = results.reduce((sum, r) => sum + r.a, 0);
+      const totalB = results.reduce((sum, r) => sum + r.b, 0);
+      const countA = results.filter(r => r.a > 0).length;
+      const countB = results.filter(r => r.b > 0).length;
+
+      document.getElementById("teamATotal").textContent = totalA;
+      document.getElementById("teamBTotal").textContent = totalB;
+      document.getElementById("teamAEventCount").textContent = `獲得イベント数: ${countA}`;
+      document.getElementById("teamBEventCount").textContent = `獲得イベント数: ${countB}`;
+      document.getElementById("scoreDiff").textContent = `${totalA} - ${totalB}`;
+
+      const teamA = state.meta.teamAName;
+      const teamB = state.meta.teamBName;
+      const diff = Math.abs(totalA - totalB);
+      let text = "現在は同点です。";
+      let banner = "勝敗はまだこれから。逆転劇の匂いがします。";
+
+      if (totalA > totalB) {
+        text = `${teamA} が ${diff} ポイントリード中`;
+        banner = `${teamA} 優勢！でも運動会に油断は禁物です。`;
+      } else if (totalB > totalA) {
+        text = `${teamB} が ${diff} ポイントリード中`;
+        banner = `${teamB} 優勢！でも最後の最後でドラマが起きがちです。`;
+      }
+
+      document.getElementById("winnerText").textContent = text;
+      document.getElementById("winnerBanner").textContent = banner;
+      document.getElementById("teamATitle").textContent = `${teamA} 総合ポイント`;
+      document.getElementById("teamBTitle").textContent = `${teamB} 総合ポイント`;
+    }
+
+    function render() {
+      document.title = state.meta.title || "運動会ポイント記録サイト";
+      document.getElementById("eventTitle").value = state.meta.title || "";
+      document.getElementById("teamAName").value = state.meta.teamAName || "チームA";
+      document.getElementById("teamBName").value = state.meta.teamBName || "チームB";
+      document.getElementById("daysRoot").innerHTML = schema.map(renderDay).join("");
+      bindInputs();
+      bindActions();
+      updateTotals();
+    }
+
+    async function fetchState(roomId) {
+      const res = await fetch(`/api/state/${encodeURIComponent(roomId)}`);
+      if (!res.ok) throw new Error("state fetch failed");
+      return await res.json();
+    }
+
+    async function fetchLogs() {
+      const res = await fetch(`/api/logs/${encodeURIComponent(currentRoomId)}`);
+      if (!res.ok) return;
+      const logs = await res.json();
+      const logList = document.getElementById("logList");
+      if (!Array.isArray(logs) || !logs.length) {
+        logList.innerHTML = `<div class="log-item">まだログはありません。</div>`;
+        return;
+      }
+      logList.innerHTML = logs.map(log => {
+        const created = log.created_at ? new Date(log.created_at).toLocaleString("ja-JP") : "-";
+        return `
+          <div class="log-item">
+            <strong>${escapeHtml(log.action || "action")}</strong><br>
+            room: ${escapeHtml(currentRoomId)}<br>
+            event: ${escapeHtml(log.event_id || "-")}<br>
+            editor: ${escapeHtml(log.editor || "-")}<br>
+            time: ${escapeHtml(created)}
+          </div>
+        `;
+      }).join("");
+    }
+
+    async function postJson(url, payload) {
+      const res = await fetch(url, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload)
       });
+      return await res.json();
+    }
+
+    async function saveMeta() {
+      const payload = {
+        room_id: currentRoomId,
+        title: document.getElementById("eventTitle").value.trim() || "運動会ポイントボード",
+        teamAName: document.getElementById("teamAName").value.trim() || "チームA",
+        teamBName: document.getElementById("teamBName").value.trim() || "チームB",
+        editor: getEditorName()
+      };
+      const result = await postJson("/api/meta", payload);
+      if (!result.ok) alert("設定保存に失敗しました");
+    }
+
+    async function saveEvent(eventId) {
+      const payload = {
+        room_id: currentRoomId,
+        event_id: eventId,
+        payload: deepClone(getEventData(eventId)),
+        editor: getEditorName()
+      };
+      const result = await postJson("/api/event", payload);
+      if (result.ok === false && result.error === "locked") {
+        alert("この競技はロックされています");
+      }
+    }
+
+    async function toggleLock(eventId) {
+      const next = !state.locks[eventId];
+      const ok = confirm(next ? "この競技を確定ロックしますか？" : "この競技のロックを解除しますか？");
+      if (!ok) return;
+      await postJson("/api/event/lock", {
+        room_id: currentRoomId,
+        event_id: eventId,
+        locked: next,
+        editor: getEditorName()
+      });
+    }
+
+    async function resetRoom() {
+      const ok = confirm("このルームの競技入力をすべて初期化します。よろしいですか？");
+      if (!ok) return;
+      await postJson("/api/reset", {
+        room_id: currentRoomId,
+        editor: getEditorName()
+      });
+      await fetchLogs();
+    }
+
+    function bindInputs() {
+      document.querySelectorAll("[data-event-id][data-key]").forEach(el => {
+        el.addEventListener("input", (e) => {
+          const id = e.target.dataset.eventId;
+          const key = e.target.dataset.key;
+          if (state.locks[id]) {
+            e.target.blur();
+            return;
+          }
+          const data = getEventData(id);
+          data[key] = e.target.value;
+          updateTotals();
+        });
+      });
+    }
+
+    function bindActions() {
+      document.querySelectorAll("[data-action='save-event']").forEach(btn => {
+        btn.addEventListener("click", async () => {
+          await saveEvent(btn.dataset.eventId);
+          await fetchLogs();
+        });
+      });
+
+      document.querySelectorAll("[data-action='toggle-lock']").forEach(btn => {
+        btn.addEventListener("click", async () => {
+          await toggleLock(btn.dataset.eventId);
+          await fetchLogs();
+        });
+      });
+    }
+
+    function setSocketStatus(online) {
+      const el = document.getElementById("socketStatus");
+      isSocketReady = online;
+      el.textContent = `Socket: ${online ? "online" : "offline"}`;
+      el.className = `status-chip ${online ? "ok" : "off"}`;
+    }
+
+    function connectSocket(roomId) {
+      if (socket) {
+        socket.disconnect();
+        socket = null;
+      }
+
+      socket = io("/", {
+        auth: { room_id: roomId },
+        transports: ["websocket", "polling"]
+      });
+
+      socket.on("connect", () => {
+        setSocketStatus(true);
+      });
+
+      socket.on("disconnect", () => {
+        setSocketStatus(false);
+      });
+
+      socket.on("state:init", (serverState) => {
+        applyServerState(serverState);
+      });
+
+      socket.on("state:update", (serverState) => {
+        applyServerState(serverState);
+      });
+    }
+
+    async function connectRoom() {
+      currentRoomId = getRoomId();
+      document.getElementById("roomStatus").textContent = `room: ${currentRoomId}`;
+      connectSocket(currentRoomId);
+      const serverState = await fetchState(currentRoomId);
+      applyServerState(serverState);
+      await fetchLogs();
+    }
+
+    document.getElementById("connectBtn").addEventListener("click", connectRoom);
+    document.getElementById("saveSettingsBtn").addEventListener("click", async () => {
+      await saveMeta();
+      await fetchLogs();
+    });
+    document.getElementById("refreshLogsBtn").addEventListener("click", fetchLogs);
+    document.getElementById("resetBtn").addEventListener("click", resetRoom);
+
+    window.addEventListener("load", async () => {
+      await connectRoom();
     });
   </script>
 </body>
