@@ -1585,14 +1585,14 @@
       const teamB = state.meta.teamBName;
       const diff = Math.abs(totalA - totalB);
       let text = "現在は同点です。";
-      let banner = "勝敗はまだこれから。逆転劇の匂いがします。";
+      let banner = "勝敗はまだこれから";
 
       if (totalA > totalB) {
         text = `${teamA} が ${diff} ポイントリード中`;
-        banner = `${teamA} 優勢！でも運動会に油断は禁物です。`;
+        banner = `${teamA} 優勢！`;
       } else if (totalB > totalA) {
         text = `${teamB} が ${diff} ポイントリード中`;
-        banner = `${teamB} 優勢！でも最後の最後でドラマが起きがちです。`;
+        banner = `${teamB} 優勢！`;
       }
 
       document.getElementById("winnerText").textContent = text;
@@ -1808,6 +1808,7 @@
   </script>
 </body>
 </html>
+
 
 
 
