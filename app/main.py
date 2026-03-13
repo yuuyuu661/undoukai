@@ -125,8 +125,8 @@ async def get_logs(room: str):
 # SOCKET
 # ===============================
 @sio.event
-async def connect(sid, environ):
-    print("connect", sid)
+async def connect(sid, environ, auth):
+    print("connect", sid, auth)
 
 
 @sio.event
@@ -148,5 +148,6 @@ async def disconnect(sid):
 # ===============================
 if __name__ == "__main__":
     uvicorn.run(socket_app, host="0.0.0.0", port=8000)
+
 
 
