@@ -1154,13 +1154,14 @@
 
     function getEventData(id) {
 
-      const card = document.querySelector(`[data-event-id="${id}"]`);
-      if (!card) return state.events[id] || {};
+      // ★ 初期ロード時は絶対既存データ返す
+      if (!document.querySelector(`[data-event-id="${id}"]`)) {
+        return state.events[id] || {};
+      }
 
-      const data = {};
+      const data = state.events[id] || {};
 
-      card.querySelectorAll("[data-event-id][data-key]").forEach(el => {
-
+      document.querySelectorAll(`[data-event-id="${id}"][data-key]`).forEach(el => {
         const key = el.dataset.key;
         if (!key) return;
 
@@ -1169,7 +1170,6 @@
         } else {
           data[key] = el.value;
         }
-
       });
 
       state.events[id] = data;
@@ -1776,6 +1776,7 @@
   </script>
 </body>
 </html>
+
 
 
 
