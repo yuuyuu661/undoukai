@@ -171,19 +171,17 @@ class Database:
     # LOCK
     # ===============================
     async def set_event_lock(self, room_id: str, event_id: str, locked: bool, editor: str):
-
         async with self.pool.acquire() as conn:
-
             await conn.execute("""
-            INSERT INTO scoreboard_events(room_id,event_id,locked,updated_at)
-            VALUES($1,$2,$3,NOW())
-            ON CONFLICT(room_id,event_id)
-            DO UPDATE SET locked=$3, updated_at=NOW()
+            INSERT INTO scoreboard_events(room_id, event_id, locked, updated_at)
+            VALUES($1, $2, $3, NOW())
+            ON CONFLICT(room_id, event_id)
+            DO UPDATE SET locked = $3, updated_at = NOW()
             """, room_id, event_id, locked)
 
             await conn.execute("""
-            INSERT INTO scoreboard_logs(room_id,event_id,editor,action,after_data)
-            VALUES($1,$2,$3,'lock_event',$4)
+            INSERT INTO scoreboard_logs(room_id, event_id, editor, action, after_data)
+            VALUES($1, $2, $3, 'lock_event', $4)
             """, room_id, event_id, editor, json.dumps({"locked": locked}))
 
     # ===============================
@@ -225,4 +223,5 @@ class Database:
             """, room_id, limit)
 
             return [dict(r) for r in rows]
+
 
