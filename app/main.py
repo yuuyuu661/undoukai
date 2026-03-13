@@ -4,6 +4,9 @@ from fastapi.responses import FileResponse
 import socketio
 import uvicorn
 from app.db import Database
+from app.state import RoomManager
+
+manager = RoomManager()
 
 # ===============================
 # 初期化（順番超重要）
@@ -169,6 +172,7 @@ async def disconnect(sid):
 # ===============================
 if __name__ == "__main__":
     uvicorn.run(socket_app, host="0.0.0.0", port=8000)
+
 
 
 
