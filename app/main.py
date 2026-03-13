@@ -64,17 +64,24 @@ async def save_meta(room: str, data: dict):
 # EVENT
 # ===============================
 @app.post("/api/event/{room}/{event_id}")
-async def save_event(room: str, event_id: str, data: dict):
-    editor = data.get("editor", "unknown")
-    await db.save_event(room, event_id, data, editor)
+async def save_event(room: str, event_id: str, payload: dict):
 
-    state = await db.load_room_state(room)
+    state = manager.get_or_create(room)
 
-    await sio.emit(
-        "state:update",
-        state,
-        room=room
-    )
+    if state["locks"].get(event_id):
+        return {"ok": False, "error": "locked"}
+
+    state["events"][event_id] = payload
+
+    # 🔥 ここ追加
+    await db.save_event(room, event_id, payload)
+
+    await sio.emit("event_updated", {
+        "room": room,
+        "event_id": event_id,
+        "data": payload
+    }, room=room)
+
     return {"ok": True}
 
 
@@ -161,6 +168,7 @@ async def disconnect(sid):
 # ===============================
 if __name__ == "__main__":
     uvicorn.run(socket_app, host="0.0.0.0", port=8000)
+
 
 
 
