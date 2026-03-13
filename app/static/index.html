@@ -1772,6 +1772,14 @@
       socket.on("state:update", (serverState) => {
         applyServerState(serverState);
       });
+
+      // ⭐ これ追加
+      socket.on("event_updated", (msg) => {
+        console.log("EVENT UPDATE", msg);
+        if (!state.events) state.events = {};
+        state.events[msg.event_id] = msg.data;
+        render();
+      });
     }
 
     async function connectRoom() {
@@ -1797,6 +1805,7 @@
   </script>
 </body>
 </html>
+
 
 
 
