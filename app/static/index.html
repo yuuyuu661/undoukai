@@ -1155,13 +1155,13 @@
     function getEventData(id) {
 
       const card = document.querySelector(`[data-event-id="${id}"]`);
-      if (!card) return {};
+      if (!card) return state.events[id] || {};
 
       const data = {};
 
-      card.querySelectorAll("input, select, textarea").forEach(el => {
+      card.querySelectorAll("[data-event-id][data-key]").forEach(el => {
 
-        const key = el.dataset.field;
+        const key = el.dataset.key;
         if (!key) return;
 
         if (el.type === "number") {
@@ -1776,6 +1776,7 @@
   </script>
 </body>
 </html>
+
 
 
 
