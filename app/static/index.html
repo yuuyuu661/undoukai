@@ -1346,7 +1346,7 @@
         `;
       }
 
-      const data = getEventData(event.id);
+      const data = state.events[event.id] || {};
       const teamAName = state.meta.teamAName;
       const teamBName = state.meta.teamBName;
       const result = calcEventPoints(event, data);
@@ -1796,6 +1796,7 @@
   </script>
 </body>
 </html>
+
 
 
 
