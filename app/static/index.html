@@ -1644,6 +1644,11 @@
       const ok = confirm(next ? "この競技を確定ロックしますか？" : "この競技のロックを解除しますか？");
       if (!ok) return;
 
+      // ロックON前に必ず保存
+      if (next) {
+        await saveEvent(eventId);
+      }
+
       await postJson(`/api/lock/${currentRoomId}/${eventId}`, {
         locked: next,
         editor: getEditorName()
@@ -1751,4 +1756,5 @@
   </script>
 </body>
 </html>
+
 
