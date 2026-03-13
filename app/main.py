@@ -81,8 +81,7 @@ async def save_event(room: str, event_id: str, payload: dict):
     # 保存後の最新状態を全員へ配信
     state = await db.load_room_state(room)
     print("EMIT STATE UPDATE", room)
-    await sio.emit("state:update", state, room=room)
-
+    await sio.emit("state:update", state)
     return {"ok": True}
 
 
@@ -169,6 +168,7 @@ async def disconnect(sid):
 # ===============================
 if __name__ == "__main__":
     uvicorn.run(socket_app, host="0.0.0.0", port=8000)
+
 
 
 
