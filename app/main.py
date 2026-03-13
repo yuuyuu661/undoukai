@@ -71,17 +71,23 @@ async def save_meta(room: str, data: dict):
 async def save_event(room: str, event_id: str, payload: dict):
     editor = payload.get("editor", "unknown")
 
-    # ロック状態はDB基準で見る
     current_state = await db.load_room_state(room)
     if current_state["locks"].get(event_id):
         return {"ok": False, "error": "locked"}
 
     await db.save_event(room, event_id, payload, editor)
 
-    # 保存後の最新状態を全員へ配信
     state = await db.load_room_state(room)
-    print("EMIT STATE UPDATE", room)
-    await sio.emit("state:update", state)
+
+    print("EMIT EVENT UPDATE", room, event_id)   # ← 追加
+
+    await sio.emit("state:update", state, room=room)
+    await sio.emit("event_updated", {            # ← 追加
+        "room": room,
+        "event_id": event_id,
+        "data": payload
+    }, room=room)
+
     return {"ok": True}
 
 
@@ -168,6 +174,7 @@ async def disconnect(sid):
 # ===============================
 if __name__ == "__main__":
     uvicorn.run(socket_app, host="0.0.0.0", port=8000)
+
 
 
 
