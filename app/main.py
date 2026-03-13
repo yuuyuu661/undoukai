@@ -76,8 +76,13 @@ async def save_event(room: str, event_id: str, data: dict):
 # ===============================
 @app.post("/api/lock/{room}/{event_id}")
 async def lock_event(room: str, event_id: str, data: dict):
+
     editor = data.get("editor", "unknown")
-    locked = data.get("locked", True)
+
+    if "locked" not in data:
+        return {"error": "locked field required"}
+
+    locked = bool(data["locked"])
 
     await db.set_event_lock(room, event_id, locked, editor)
 
@@ -86,6 +91,7 @@ async def lock_event(room: str, event_id: str, data: dict):
         {"event_id": event_id, "locked": locked},
         room=room
     )
+
     return {"ok": True}
 
 
@@ -139,3 +145,4 @@ async def disconnect(sid):
 # ===============================
 if __name__ == "__main__":
     uvicorn.run(socket_app, host="0.0.0.0", port=8000)
+
