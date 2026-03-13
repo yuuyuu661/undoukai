@@ -154,7 +154,7 @@ class Database:
                 WHERE room_id=$1 AND event_id=$2
             """, room_id, event_id)
 
-            before_json = json.dumps(before["payload"]) if before else None
+            before_json = before["payload"] if before else None
             payload_json = json.dumps(payload)
 
             await conn.execute("""
@@ -228,6 +228,7 @@ class Database:
             """, room_id, limit)
 
             return [dict(r) for r in rows]
+
 
 
 
