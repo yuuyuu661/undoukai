@@ -1336,7 +1336,7 @@
     function renderEvent(event) {
       if (event.type === "note") {
         return `
-          <article class="event-card">
+          <article class="event-card" data-event-id="${event.id}">
             <div class="event-header">
               <h4 class="event-title">${escapeHtml(event.title)}</h4>
               <span class="time-badge">${escapeHtml(event.time)}</span>
@@ -1481,7 +1481,7 @@
       }
 
       return `
-        <article class="event-card ${locked ? "locked" : ""} ${status.cls === "warn" ? "pending" : ""}">
+        <article class="event-card ${locked ? "locked" : ""} ${status.cls === "warn" ? "pending" : ""}" data-event-id="${event.id}">
           <div class="event-header">
             <h4 class="event-title">${escapeHtml(event.title)}</h4>
             <span class="time-badge">${escapeHtml(event.time)}</span>
@@ -1776,6 +1776,7 @@
   </script>
 </body>
 </html>
+
 
 
 
