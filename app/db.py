@@ -2,7 +2,7 @@ import os
 import json
 import asyncpg
 from dotenv import load_dotenv
-await conn.execute("SET TIME ZONE 'Asia/Tokyo'")
+
 
 load_dotenv()
 
@@ -234,6 +234,7 @@ class Database:
             """, room_id, limit)
 
             return [dict(r) for r in rows]
+
 
 
 
