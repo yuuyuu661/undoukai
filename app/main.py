@@ -73,8 +73,9 @@ async def save_event(room: str, event_id: str, payload: dict):
 
     state["events"][event_id] = payload
 
-    # 🔥 ここ追加
-    await db.save_event(room, event_id, payload)
+    editor = payload.get("editor", "unknown")
+
+    await db.save_event(room, event_id, payload, editor)
 
     await sio.emit("event_updated", {
         "room": room,
@@ -168,6 +169,7 @@ async def disconnect(sid):
 # ===============================
 if __name__ == "__main__":
     uvicorn.run(socket_app, host="0.0.0.0", port=8000)
+
 
 
 
