@@ -1606,15 +1606,16 @@
       document.getElementById("eventTitle").value = state.meta.title || "";
       document.getElementById("teamAName").value = state.meta.teamAName || "チームA";
       document.getElementById("teamBName").value = state.meta.teamBName || "チームB";
-      document.getElementById("daysRoot").innerHTML = schema.map(renderDay).join("");
 
+      document.getElementById("daysRoot").innerHTML =
+        schema.map(renderDay).join("");
 
-      bindInputs();      // ← 先
-      bindActions();     // ← 先
-
-      applyEventValues(); // ← 後
-
-      updateTotals();
+      requestAnimationFrame(() => {
+        applyEventValues();
+        bindInputs();
+        bindActions();
+        updateTotals();
+      });
     }
 
     async function fetchState(roomId) {
@@ -1796,6 +1797,7 @@
   </script>
 </body>
 </html>
+
 
 
 
