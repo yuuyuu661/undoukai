@@ -175,8 +175,8 @@ class Database:
         async with self.pool.acquire() as conn:
 
             await conn.execute("""
-            INSERT INTO scoreboard_events(room_id,event_id,payload,locked,updated_at)
-            VALUES($1,$2,'{}',$3,NOW())
+            INSERT INTO scoreboard_events(room_id,event_id,locked,updated_at)
+            VALUES($1,$2,$3,NOW())
             ON CONFLICT(room_id,event_id)
             DO UPDATE SET locked=$3, updated_at=NOW()
             """, room_id, event_id, locked)
@@ -225,3 +225,4 @@ class Database:
             """, room_id, limit)
 
             return [dict(r) for r in rows]
+
