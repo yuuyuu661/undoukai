@@ -54,7 +54,9 @@ async def load_state(room: str):
 async def save_meta(room: str, data: dict):
     editor = data.get("editor", "unknown")
     await db.save_meta(room, data, editor)
-    await sio.emit("meta:update", data, room=room)
+    state = await db.load_room_state(room)
+
+    await sio.emit("state:update", state, room=room)
     return {"ok": True}
 
 
@@ -66,9 +68,11 @@ async def save_event(room: str, event_id: str, data: dict):
     editor = data.get("editor", "unknown")
     await db.save_event(room, event_id, data, editor)
 
+    state = await db.load_room_state(room)
+
     await sio.emit(
-        "event:update",
-        {"event_id": event_id, "data": data},
+        "state:update",
+        state,
         room=room
     )
     return {"ok": True}
@@ -89,9 +93,11 @@ async def lock_event(room: str, event_id: str, data: dict):
 
     await db.set_event_lock(room, event_id, locked, editor)
 
+    state = await db.load_room_state(room)
+
     await sio.emit(
-        "event:lock",
-        {"event_id": event_id, "locked": locked},
+        "state:update",
+        state,
         room=room
     )
 
@@ -109,7 +115,7 @@ async def reset_room(room: str, data: dict):
 
     state = await db.load_room_state(room)
 
-    await sio.emit("state:reset", state, room=room)
+    await sio.emit("state:update", state, room=room)
     return {"ok": True}
 
 
@@ -126,7 +132,14 @@ async def get_logs(room: str):
 # ===============================
 @sio.event
 async def connect(sid, environ, auth):
-    print("connect", sid, auth)
+    room = auth.get("room_id", "default")
+
+    sio.enter_room(sid, room)
+
+    print("connect", sid, room)
+
+    state = await db.load_room_state(room)
+    await sio.emit("state:init", state, to=sid)
 
 
 @sio.event
@@ -148,6 +161,7 @@ async def disconnect(sid):
 # ===============================
 if __name__ == "__main__":
     uvicorn.run(socket_app, host="0.0.0.0", port=8000)
+
 
 
 
