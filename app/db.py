@@ -99,7 +99,9 @@ class Database:
             locks = {}
 
             for row in rows:
-                events[row["event_id"]] = row["payload"] or {}
+                events[row["event_id"]] = (
+                    json.loads(row["payload"]) if row["payload"] else {}
+                )
                 locks[row["event_id"]] = row["locked"]
 
             return {
@@ -157,7 +159,7 @@ class Database:
             VALUES($1,$2,$3,NOW())
             ON CONFLICT(room_id,event_id)
             DO UPDATE SET payload=$3, updated_at=NOW()
-            """, room_id, event_id, payload)
+            """, room_id, event_id, json.dumps(payload))
 
             await conn.execute("""
             INSERT INTO scoreboard_logs(room_id,event_id,editor,action,before_data,after_data)
@@ -223,6 +225,7 @@ class Database:
             """, room_id, limit)
 
             return [dict(r) for r in rows]
+
 
 
 
