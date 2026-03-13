@@ -157,14 +157,14 @@ class Database:
             VALUES($1,$2,$3,NOW())
             ON CONFLICT(room_id,event_id)
             DO UPDATE SET payload=$3, updated_at=NOW()
-            """, room_id, event_id, json.dumps(payload))
+            """, room_id, event_id, payload)
 
             await conn.execute("""
             INSERT INTO scoreboard_logs(room_id,event_id,editor,action,before_data,after_data)
             VALUES($1,$2,$3,'update_event',$4,$5)
             """, room_id, event_id, editor,
-                json.dumps(before["payload"]) if before else None,
-                json.dumps(payload)
+                before["payload"] if before else None,
+                payload
             )
 
     # ===============================
@@ -223,5 +223,6 @@ class Database:
             """, room_id, limit)
 
             return [dict(r) for r in rows]
+
 
 
