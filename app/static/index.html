@@ -1609,9 +1609,11 @@
       document.getElementById("daysRoot").innerHTML = schema.map(renderDay).join("");
 
 
-      applyEventValues();
-      bindInputs();
-      bindActions();
+      bindInputs();      // ← 先
+      bindActions();     // ← 先
+
+      applyEventValues(); // ← 後
+
       updateTotals();
     }
 
@@ -1794,6 +1796,7 @@
   </script>
 </body>
 </html>
+
 
 
 
