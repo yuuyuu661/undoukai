@@ -154,6 +154,8 @@ class Database:
                 WHERE room_id=$1 AND event_id=$2
             """, room_id, event_id)
 
+            before_json = before["payload"] if before else None
+
             await conn.execute("""
             INSERT INTO scoreboard_events(room_id,event_id,payload,updated_at)
             VALUES($1,$2,$3,NOW())
@@ -165,8 +167,8 @@ class Database:
             INSERT INTO scoreboard_logs(room_id,event_id,editor,action,before_data,after_data)
             VALUES($1,$2,$3,'update_event',$4,$5)
             """, room_id, event_id, editor,
-                before["payload"] if before else None,
-                payload
+                before_json,
+                json.dumps(payload)
             )
 
     # ===============================
@@ -225,6 +227,7 @@ class Database:
             """, room_id, limit)
 
             return [dict(r) for r in rows]
+
 
 
 
