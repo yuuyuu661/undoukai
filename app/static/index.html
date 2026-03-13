@@ -1776,9 +1776,12 @@
       // ⭐ これ追加
       socket.on("event_updated", (msg) => {
         console.log("EVENT UPDATE", msg);
+
         if (!state.events) state.events = {};
         state.events[msg.event_id] = msg.data;
-        render();
+
+        applyEventValues();   // ⭐ 超重要
+        updateTotals();       // ⭐ 超重要
       });
     }
 
@@ -1805,6 +1808,7 @@
   </script>
 </body>
 </html>
+
 
 
 
