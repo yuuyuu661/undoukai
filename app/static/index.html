@@ -1553,6 +1553,21 @@
       `;
     }
 
+    function applyEventValues() {
+      for (const eventId in state.events) {
+        const data = state.events[eventId];
+
+        for (const key in data) {
+          const el = document.querySelector(
+            `[data-event-id="${eventId}"][data-key="${key}"]`
+          );
+          if (!el) continue;
+
+          el.value = data[key] ?? "";
+        }
+      }
+    }
+
     function updateTotals() {
       const results = collectAllEventResults();
       const totalA = results.reduce((sum, r) => sum + r.a, 0);
@@ -1592,6 +1607,9 @@
       document.getElementById("teamAName").value = state.meta.teamAName || "チームA";
       document.getElementById("teamBName").value = state.meta.teamBName || "チームB";
       document.getElementById("daysRoot").innerHTML = schema.map(renderDay).join("");
+
+
+      applyEventValues();
       bindInputs();
       bindActions();
       updateTotals();
@@ -1776,6 +1794,7 @@
   </script>
 </body>
 </html>
+
 
 
 
