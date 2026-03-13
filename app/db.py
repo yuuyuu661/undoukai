@@ -2,6 +2,7 @@ import os
 import json
 import asyncpg
 from dotenv import load_dotenv
+await conn.execute("SET TIME ZONE 'Asia/Tokyo'")
 
 load_dotenv()
 
@@ -16,6 +17,9 @@ class Database:
 
     async def connect(self):
         self.pool = await asyncpg.create_pool(self.db_url)
+
+        async with self.pool.acquire() as conn:
+            await conn.execute("SET TIME ZONE 'Asia/Tokyo'")
 
     async def close(self):
         if self.pool:
@@ -228,6 +232,7 @@ class Database:
             """, room_id, limit)
 
             return [dict(r) for r in rows]
+
 
 
 
