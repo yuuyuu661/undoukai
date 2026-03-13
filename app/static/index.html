@@ -1153,8 +1153,28 @@
     }
 
     function getEventData(id) {
-      if (!state.events[id]) state.events[id] = {};
-      return state.events[id];
+
+      const card = document.querySelector(`[data-event-id="${id}"]`);
+      if (!card) return {};
+
+      const data = {};
+
+      card.querySelectorAll("input, select, textarea").forEach(el => {
+
+        const key = el.dataset.field;
+        if (!key) return;
+
+        if (el.type === "number") {
+          data[key] = el.value === "" ? null : Number(el.value);
+        } else {
+          data[key] = el.value;
+        }
+
+      });
+
+      state.events[id] = data;
+
+      return data;
     }
 
     function eventHasAnyInput(event, data) {
@@ -1756,5 +1776,6 @@
   </script>
 </body>
 </html>
+
 
 
