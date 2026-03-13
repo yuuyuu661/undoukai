@@ -16,10 +16,12 @@ class Database:
             raise ValueError("DATABASE_URL が設定されていません")
 
     async def connect(self):
-        self.pool = await asyncpg.create_pool(self.db_url)
-
-        async with self.pool.acquire() as conn:
-            await conn.execute("SET TIME ZONE 'Asia/Tokyo'")
+        self.pool = await asyncpg.create_pool(
+            self.db_url,
+            server_settings={
+                "timezone": "Asia/Tokyo"
+            }
+        )
 
     async def close(self):
         if self.pool:
@@ -232,6 +234,7 @@ class Database:
             """, room_id, limit)
 
             return [dict(r) for r in rows]
+
 
 
 
