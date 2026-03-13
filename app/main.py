@@ -134,7 +134,7 @@ async def get_logs(room: str):
 async def connect(sid, environ, auth):
     room = auth.get("room_id", "default")
 
-    sio.enter_room(sid, room)
+    await sio.enter_room(sid, room)   # ← 修正
 
     print("connect", sid, room)
 
@@ -144,7 +144,7 @@ async def connect(sid, environ, auth):
 
 @sio.event
 async def join(sid, room):
-    sio.enter_room(sid, room)
+    await sio.enter_room(sid, room)   # ← 修正
     print("join", room)
 
     state = await db.load_room_state(room)
@@ -161,6 +161,7 @@ async def disconnect(sid):
 # ===============================
 if __name__ == "__main__":
     uvicorn.run(socket_app, host="0.0.0.0", port=8000)
+
 
 
 
