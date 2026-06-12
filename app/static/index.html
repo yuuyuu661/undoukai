@@ -460,11 +460,15 @@ function applyServerState(serverState){
 
 function userTotal(userId){
   let total = 0;
+
   for(const mission of board.missions){
-    if(board.progress?.[userId]?.[mission.id]){
-      total += safePoint(mission.point);
+    const count = safePoint(board.progress?.[userId]?.[mission.id]);
+
+    if(count > 0){
+      total += safePoint(mission.point) * count;
     }
   }
+
   return total;
 }
 
@@ -478,11 +482,17 @@ function totalEarned(){
 
 function completedCount(){
   let count = 0;
+
   for(const user of board.users){
     for(const mission of board.missions){
-      if(board.progress?.[user.id]?.[mission.id]) count++;
+      const doneCount = safePoint(board.progress?.[user.id]?.[mission.id]);
+
+      if(doneCount > 0){
+        count++;
+      }
     }
   }
+
   return count;
 }
 
@@ -497,13 +507,29 @@ function toggleProgress(userId,missionId){
   scheduleSave();
 }
 
-function addUser(){
-  const input = document.getElementById("newUserName");
-  const name = input.value.trim();
-  if(!name) return alert("ユーザー名を入力してください");
+function changeProgress(userId, missionId, diff){
 
-  board.users.push({id:uid("user"),name});
-  input.value = "";
+  if(!board.progress[userId]){
+    board.progress[userId] = {};
+  }
+
+  const current = safePoint(board.progress[userId][missionId]);
+  const next = Math.max(0, current + diff);
+
+  board.progress[userId][missionId] = next;
+
+  render();
+  scheduleSave();
+}
+
+function setProgressZero(userId, missionId){
+
+  if(!board.progress[userId]){
+    board.progress[userId] = {};
+  }
+
+  board.progress[userId][missionId] = 0;
+
   render();
   scheduleSave();
 }
@@ -669,16 +695,36 @@ function renderTable(){
             <span class="user-name">${escapeHtml(user.name)}</span>
           </td>
           ${board.missions.map(mission=>{
-            const checked = !!board.progress?.[user.id]?.[mission.id];
+            const count = safePoint(board.progress?.[user.id]?.[mission.id]);
+            const checked = count > 0;
+
             return `
               <td>
-                <button
-                  class="check-btn ${checked ? "checked" : "unchecked"}"
-                  onclick="toggleProgress('${user.id}','${mission.id}')"
-                  title="${escapeHtml(user.name)} / ${escapeHtml(mission.name)}"
-                >${checked ? "〇" : "-"}</button>
+                <div style="display:flex; align-items:center; justify-content:center; gap:6px;">
+                  <button
+                    class="small-btn btn-danger"
+                    onclick="changeProgress('${user.id}','${mission.id}',-1)"
+                  >−</button>
+
+                  <button
+                    class="check-btn ${checked ? "checked" : "unchecked"}"
+                    onclick="changeProgress('${user.id}','${mission.id}',1)"
+                    title="${escapeHtml(user.name)} / ${escapeHtml(mission.name)}"
+                  >${checked ? count : "-"}</button>
+
+                  <button
+                    class="small-btn btn-success"
+                    onclick="changeProgress('${user.id}','${mission.id}',1)"
+                  >＋</button>
+
+                  <button
+                    class="small-btn btn-ghost"
+                    onclick="setProgressZero('${user.id}','${mission.id}')"
+                  >0</button>
+                </div>
               </td>
             `;
+            
           }).join("")}
           <td class="total-cell">${userTotal(user.id)}pt</td>
         </tr>
