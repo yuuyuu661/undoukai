@@ -534,6 +534,31 @@ function setProgressZero(userId, missionId){
   scheduleSave();
 }
 
+function addUser(){
+
+  const input =
+    document.getElementById("newUserName");
+
+  const name =
+    input.value.trim();
+
+  if(!name){
+    alert("ユーザー名を入力してください");
+    return;
+  }
+
+  board.users.push({
+    id: uid("user"),
+    name: name
+  });
+
+  input.value = "";
+
+  render();
+
+  scheduleSave();
+}
+
 function addMission(){
   const nameEl = document.getElementById("newMissionName");
   const pointEl = document.getElementById("newMissionPoint");
